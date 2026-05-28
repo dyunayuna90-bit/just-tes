@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -122,7 +121,6 @@
 
     <!-- VIEW: LIBRARY -->
     <div id="library-view" class="absolute inset-0 flex flex-col overflow-hidden transition-transform duration-500 origin-bottom bg-m3-bg z-10 w-full">
-        <!-- Solid background sticky header with edge-to-edge padding to prevent content from sliding under the sides -->
         <header id="main-header" class="pt-10 pb-5 px-6 sticky top-0 bg-m3-bg z-40 w-full transition-shadow duration-300">
             <div class="flex justify-between items-center mb-6">
                 <div>
@@ -141,7 +139,6 @@
             </div>
         </header>
 
-        <!-- Main Content Area padded correctly -->
         <div id="library-content-scroll" class="flex-1 overflow-y-auto px-6 pt-2 pb-32">
             <div id="loading-state" class="hidden mb-8 p-5 bg-m3-secondaryContainer text-m3-onSecondaryContainer rounded-[28px] shadow-sm">
                 <div class="flex justify-between items-end mb-3">
@@ -182,6 +179,28 @@
 
     <!-- VIEW: READER -->
     <div id="reader-view" class="absolute inset-0 flex flex-col bg-m3-bg text-m3-onBg transform translate-y-full transition-transform duration-500 ease-in-out z-20 w-full overflow-hidden">
+        
+        <!-- Loading Overlay (M3 Expressive) -->
+        <div id="reader-loading-overlay" class="absolute inset-0 z-50 bg-m3-bg flex flex-col items-center justify-center transition-opacity duration-500 hidden opacity-0">
+            <div class="relative flex flex-col items-center justify-center scale-110">
+                <div class="w-24 h-24 mb-8 relative flex items-center justify-center">
+                    <!-- Expressive M3 Spinning Rings -->
+                    <div class="absolute inset-0 rounded-full border-[5px] border-m3-surfaceVariant"></div>
+                    <div class="absolute inset-0 rounded-full border-[5px] border-m3-primary border-t-transparent border-r-transparent animate-[spin_1.5s_cubic-bezier(0.4,0,0.2,1)_infinite]"></div>
+                    <div class="absolute inset-2 rounded-full border-[4px] border-m3-tertiaryContainer border-b-transparent border-l-transparent animate-[spin_2s_cubic-bezier(0.4,0,0.2,1)_infinite_reverse]"></div>
+                    <i data-lucide="book-open" class="w-10 h-10 text-m3-primary animate-pulse relative z-10 drop-shadow-sm"></i>
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                    <p class="text-m3-primary font-black tracking-[0.15em] uppercase text-sm animate-pulse">MEMBUKA BUKU</p>
+                    <div class="flex gap-1.5 mt-1">
+                        <div class="w-2 h-2 rounded-full bg-m3-primary animate-[bounce_1s_infinite_0ms]"></div>
+                        <div class="w-2 h-2 rounded-full bg-m3-primary animate-[bounce_1s_infinite_200ms]"></div>
+                        <div class="w-2 h-2 rounded-full bg-m3-primary animate-[bounce_1s_infinite_400ms]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="reader-top-bar" class="flex items-center justify-between p-3 bg-m3-surfaceVariant text-m3-onSurfaceVariant shadow-sm shrink-0 z-30 relative rounded-b-[24px]">
             <button id="btn-back" class="btn-morph p-3 hover:bg-m3-surface"><i data-lucide="arrow-down"></i></button>
             <div class="flex-1 px-3 text-center overflow-hidden">
@@ -268,8 +287,8 @@
 
     <!-- Modals -->
     <!-- Welcome Modal -->
-    <div id="welcome-modal" class="hidden modal-overlay fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 opacity-0">
-        <div class="bg-m3-surface w-full max-w-md rounded-[32px] overflow-hidden flex flex-col scale-95 transition-transform max-h-[90vh] border border-m3-surfaceVariant" id="welcome-sheet">
+    <div id="welcome-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 opacity-0">
+        <div class="bg-m3-surface w-full max-w-md rounded-[32px] overflow-hidden flex flex-col scale-95 transition-transform max-h-[90vh] border border-m3-surfaceVariant shadow-2xl" id="welcome-sheet">
             <div class="p-6 overflow-y-auto">
                 <h2 class="text-3xl font-bold text-m3-onSurface mb-2">Welcome to Baca.</h2>
                 <p class="text-m3-onSurfaceVariant mb-6">Please read these instructions to ensure the optimal reading experience.</p>
@@ -298,14 +317,14 @@
                 </div>
             </div>
             <div class="p-4 bg-m3-surface border-t border-m3-surfaceVariant">
-                <button onclick="closeWelcome()" class="w-full py-4 bg-m3-primary text-m3-onPrimary rounded-full font-bold btn-morph shadow-md text-lg tracking-wide">Acknowledge</button>
+                <button onclick="history.back()" class="w-full py-4 bg-m3-primary text-m3-onPrimary rounded-full font-bold btn-morph shadow-md text-lg tracking-wide">Acknowledge</button>
             </div>
         </div>
     </div>
 
     <!-- Global Settings Modal -->
-    <div id="global-settings-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[100] flex items-end justify-center opacity-0">
-        <div class="modal-content bg-m3-surface w-full max-w-md rounded-t-[32px] p-6 pb-12 transform translate-y-full border-t border-m3-surfaceVariant" id="global-settings-sheet">
+    <div id="global-settings-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[100] flex items-end justify-center opacity-0">
+        <div class="modal-content bg-m3-surface w-full max-w-md rounded-t-[32px] p-6 pb-12 transform translate-y-full border-t border-m3-surfaceVariant shadow-2xl" id="global-settings-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6"></div>
             <h3 class="text-2xl font-bold mb-6 text-m3-onSurface">Settings</h3>
             
@@ -360,8 +379,8 @@
     </div>
 
     <!-- Book Options Modal -->
-    <div id="b-opt-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[100] flex items-end justify-center opacity-0 p-4 pb-8">
-        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform translate-y-full border border-m3-surfaceVariant" id="b-opt-sheet">
+    <div id="b-opt-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[100] flex items-end justify-center opacity-0 p-4 pb-8">
+        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform translate-y-full border border-m3-surfaceVariant shadow-2xl" id="b-opt-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6"></div>
             <h3 id="opt-title" class="text-lg font-bold mb-6 text-m3-onSurface text-center truncate px-2">Book Options</h3>
             <div class="flex flex-col gap-3">
@@ -373,8 +392,8 @@
     </div>
 
     <!-- Edit Book Data Modal -->
-    <div id="edit-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
-        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform scale-95 border border-m3-surfaceVariant" id="edit-sheet">
+    <div id="edit-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
+        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform scale-95 border border-m3-surfaceVariant shadow-2xl" id="edit-sheet">
             <h3 class="text-2xl font-bold mb-4 text-m3-onSurface">Edit Details</h3>
             <input type="hidden" id="edit-book-id">
             
@@ -394,7 +413,7 @@
             <input type="hidden" id="edit-book-shape" value="default">
 
             <div class="flex gap-2">
-                <button onclick="closeEditModal()" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Cancel</button>
+                <button onclick="history.back()" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Cancel</button>
                 <button onclick="saveBookEdit()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph shadow-md">Save</button>
             </div>
         </div>
@@ -421,21 +440,21 @@
     </div>
 
     <!-- Note Input Modal -->
-    <div id="note-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
-        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform scale-95 border border-m3-surfaceVariant" id="note-sheet">
+    <div id="note-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
+        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[32px] p-6 transform scale-95 border border-m3-surfaceVariant shadow-2xl" id="note-sheet">
             <h3 class="text-xl font-bold mb-4 text-m3-onSurface flex items-center gap-2"><i data-lucide="notebook-pen" class="w-5 h-5"></i> Tambah Catatan</h3>
             <textarea id="note-input-text" class="w-full h-32 bg-m3-surfaceVariant text-m3-onSurfaceVariant p-4 rounded-2xl mb-5 font-medium outline-none focus:ring-2 focus:ring-m3-primary resize-none" placeholder="Tuliskan catatanmu di sini..."></textarea>
             
             <div class="flex gap-2">
-                <button onclick="_closeModalAction('note-modal', 'note-sheet', true)" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Batal</button>
+                <button onclick="history.back()" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Batal</button>
                 <button onclick="saveNoteAnnotation()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph shadow-md">Simpan</button>
             </div>
         </div>
     </div>
     
     <!-- Show Note Details Modal -->
-    <div id="show-note-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex justify-center items-end sm:items-center opacity-0 p-4 sm:p-0">
-        <div class="modal-content bg-m3-surface w-full max-w-md sm:rounded-[32px] rounded-t-[32px] rounded-b-[0px] p-6 pb-12 sm:pb-6 transform translate-y-full sm:scale-95 border-t border-m3-surfaceVariant" id="show-note-sheet">
+    <div id="show-note-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex justify-center items-end sm:items-center opacity-0 p-4 sm:p-0">
+        <div class="modal-content bg-m3-surface w-full max-w-md sm:rounded-[32px] rounded-t-[32px] rounded-b-[0px] p-6 pb-12 sm:pb-6 transform translate-y-full sm:scale-95 border-t border-m3-surfaceVariant shadow-2xl" id="show-note-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6 sm:hidden"></div>
             <h3 class="text-xl font-bold mb-2 text-m3-onSurface flex items-center gap-2"><i data-lucide="sticky-note" class="w-5 h-5 text-yellow-500"></i> Catatan Tersimpan</h3>
             <p id="show-note-hl" class="text-xs font-mono opacity-60 mb-4 bg-black/5 dark:bg-white/5 p-2 rounded-lg line-clamp-2"></p>
@@ -443,18 +462,18 @@
             
             <div class="flex gap-2">
                 <button onclick="deleteAnnotationById()" class="py-3 px-5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-bold rounded-full btn-morph shadow-sm flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                <button onclick="closeShowNoteModal()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph shadow-md">Tutup</button>
+                <button onclick="history.back()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph shadow-md">Tutup</button>
             </div>
         </div>
     </div>
 
     <!-- AI Definition Modal -->
-    <div id="ai-modal" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-end sm:items-center justify-center opacity-0 pb-0 sm:pb-0 p-0 sm:p-4">
-        <div class="modal-content bg-m3-surface w-full max-w-md sm:rounded-[32px] rounded-t-[32px] p-6 pb-12 sm:pb-6 transform translate-y-full sm:scale-95 border-t border-m3-surfaceVariant flex flex-col max-h-[85vh]" id="ai-sheet">
+    <div id="ai-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-end sm:items-center justify-center opacity-0 pb-0 sm:pb-0 p-0 sm:p-4">
+        <div class="modal-content bg-m3-surface w-full max-w-md sm:rounded-[32px] rounded-t-[32px] p-6 pb-12 sm:pb-6 transform translate-y-full sm:scale-95 border-t border-m3-surfaceVariant shadow-2xl flex flex-col max-h-[85vh]" id="ai-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6 sm:hidden"></div>
             <div class="flex items-center justify-between mb-4 shrink-0">
                 <h3 class="text-xl font-bold text-m3-onSurface flex items-center gap-2"><i data-lucide="search" class="w-5 h-5 text-m3-primary"></i> Penjelasan AI / Wiki</h3>
-                <button onclick="closeAiModal()" class="w-8 h-8 rounded-full bg-m3-surfaceVariant flex items-center justify-center btn-morph"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <button onclick="history.back()" class="w-8 h-8 rounded-full bg-m3-surfaceVariant flex items-center justify-center btn-morph"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             
             <h4 id="ai-term" class="text-2xl font-black mb-4 break-words text-m3-primary"></h4>
@@ -473,24 +492,23 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        // M3 Light Palettes modified to use true Material You Surface Container colors (slightly tinted background instead of flat white)
-        // Also adjusted on-background/on-surface to be higher contrast
+        // Tonal Light Palettes for genuine Material You feel (More saturated background & surface variants)
         const M3_PALETTES = {
-            purple: { light: `--md-sys-color-primary:#6750A4;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#EADDFF;--md-sys-color-on-primary-container:#21005D;--md-sys-color-secondary-container:#E8DEF8;--md-sys-color-on-secondary-container:#1D192B;--md-sys-color-tertiary-container:#FFD8E4;--md-sys-color-on-tertiary-container:#31111D;--md-sys-color-background:#F3EDF7;--md-sys-color-on-background:#1D1B20;--md-sys-color-surface:#F3EDF7;--md-sys-color-on-surface:#1D1B20;--md-sys-color-surface-variant:#E7E0EC;--md-sys-color-on-surface-variant:#313033;`, dark: `--md-sys-color-primary:#D0BCFF;--md-sys-color-on-primary:#381E72;--md-sys-color-primary-container:#4F378B;--md-sys-color-on-primary-container:#EADDFF;--md-sys-color-secondary-container:#4A4458;--md-sys-color-on-secondary-container:#E8DEF8;--md-sys-color-tertiary-container:#633B48;--md-sys-color-on-tertiary-container:#FFD8E4;--md-sys-color-background:#1C1B1E;--md-sys-color-on-background:#E6E1E5;--md-sys-color-surface:#1C1B1E;--md-sys-color-on-surface:#E6E1E5;--md-sys-color-surface-variant:#49454F;--md-sys-color-on-surface-variant:#CAC4D0;` },
-            green: { light: `--md-sys-color-primary:#006C4C;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#89F8D6;--md-sys-color-on-primary-container:#002114;--md-sys-color-secondary-container:#CCE8DB;--md-sys-color-on-secondary-container:#052016;--md-sys-color-tertiary-container:#BEEAF6;--md-sys-color-on-tertiary-container:#001F29;--md-sys-color-background:#EBF1ED;--md-sys-color-on-background:#1A1C1A;--md-sys-color-surface:#EBF1ED;--md-sys-color-on-surface:#1A1C1A;--md-sys-color-surface-variant:#DBE5DF;--md-sys-color-on-surface-variant:#2F3633;`, dark: `--md-sys-color-primary:#6CDBBA;--md-sys-color-on-primary:#003825;--md-sys-color-primary-container:#005138;--md-sys-color-on-primary-container:#89F8D6;--md-sys-color-secondary-container:#334B3F;--md-sys-color-on-secondary-container:#CCE8DB;--md-sys-color-tertiary-container:#204D59;--md-sys-color-on-tertiary-container:#BEEAF6;--md-sys-color-background:#191C1A;--md-sys-color-on-background:#E1E3DF;--md-sys-color-surface:#191C1A;--md-sys-color-on-surface:#E1E3DF;--md-sys-color-surface-variant:#404943;--md-sys-color-on-surface-variant:#BFC9C3;` },
-            rose: { light: `--md-sys-color-primary:#984061;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFD9E2;--md-sys-color-on-primary-container:#3E001D;--md-sys-color-secondary-container:#FDDADA;--md-sys-color-on-secondary-container:#2C1516;--md-sys-color-tertiary-container:#FFD8CB;--md-sys-color-on-tertiary-container:#321105;--md-sys-color-background:#F7EDF0;--md-sys-color-on-background:#201A1B;--md-sys-color-surface:#F7EDF0;--md-sys-color-on-surface:#201A1B;--md-sys-color-surface-variant:#F4DDDF;--md-sys-color-on-surface-variant:#3B2D30;`, dark: `--md-sys-color-primary:#FFB0C8;--md-sys-color-on-primary:#551D32;--md-sys-color-primary-container:#703348;--md-sys-color-on-primary-container:#FFD9E2;--md-sys-color-secondary-container:#5C3F3F;--md-sys-color-on-secondary-container:#FDDADA;--md-sys-color-tertiary-container:#663B2B;--md-sys-color-on-tertiary-container:#FFD8CB;--md-sys-color-background:#201A1B;--md-sys-color-on-background:#ECE0E1;--md-sys-color-surface:#201A1B;--md-sys-color-on-surface:#ECE0E1;--md-sys-color-surface-variant:#524346;--md-sys-color-on-surface-variant:#D7C1C4;` },
-            blue: { light: `--md-sys-color-primary:#0061A4;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D1E4FF;--md-sys-color-on-primary-container:#001D36;--md-sys-color-secondary-container:#D7E3F7;--md-sys-color-on-secondary-container:#101C2B;--md-sys-color-tertiary-container:#E2E2FF;--md-sys-color-on-tertiary-container:#191637;--md-sys-color-background:#EBEFF6;--md-sys-color-on-background:#1A1C1E;--md-sys-color-surface:#EBEFF6;--md-sys-color-on-surface:#1A1C1E;--md-sys-color-surface-variant:#DFE2EB;--md-sys-color-on-surface-variant:#2F3339;`, dark: `--md-sys-color-primary:#9ECAFF;--md-sys-color-on-primary:#003258;--md-sys-color-primary-container:#00497D;--md-sys-color-on-primary-container:#D1E4FF;--md-sys-color-secondary-container:#3B4858;--md-sys-color-on-secondary-container:#D7E3F7;--md-sys-color-tertiary-container:#423F62;--md-sys-color-on-tertiary-container:#E2E2FF;--md-sys-color-background:#1A1C1E;--md-sys-color-on-background:#E2E2E6;--md-sys-color-surface:#1A1C1E;--md-sys-color-on-surface:#E2E2E6;--md-sys-color-surface-variant:#43474E;--md-sys-color-on-surface-variant:#C3C7CF;` },
-            orange: { light: `--md-sys-color-primary:#8F4C38;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFDBD1;--md-sys-color-on-primary-container:#3A0B01;--md-sys-color-secondary-container:#FFDBD1;--md-sys-color-on-secondary-container:#2C150F;--md-sys-color-tertiary-container:#F7D8B7;--md-sys-color-on-tertiary-container:#271600;--md-sys-color-background:#F7ECE9;--md-sys-color-on-background:#221A18;--md-sys-color-surface:#F7ECE9;--md-sys-color-on-surface:#221A18;--md-sys-color-surface-variant:#F5DED8;--md-sys-color-on-surface-variant:#3B2D29;`, dark: `--md-sys-color-primary:#FFB5A0;--md-sys-color-on-primary:#561F0F;--md-sys-color-primary-container:#723523;--md-sys-color-on-primary-container:#FFDBD1;--md-sys-color-secondary-container:#5D3F37;--md-sys-color-on-secondary-container:#FFDBD1;--md-sys-color-tertiary-container:#524029;--md-sys-color-on-tertiary-container:#F7D8B7;--md-sys-color-background:#221A18;--md-sys-color-on-background:#EAE0DD;--md-sys-color-surface:#221A18;--md-sys-color-on-surface:#EAE0DD;--md-sys-color-surface-variant:#53433F;--md-sys-color-on-surface-variant:#D8C2BC;` },
-            teal: { light: `--md-sys-color-primary:#006A60;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#74F8E5;--md-sys-color-on-primary-container:#00201C;--md-sys-color-secondary-container:#CCE8E2;--md-sys-color-on-secondary-container:#05201C;--md-sys-color-tertiary-container:#D0E8CD;--md-sys-color-on-tertiary-container:#09200B;--md-sys-color-background:#E8F2F0;--md-sys-color-on-background:#191C1B;--md-sys-color-surface:#E8F2F0;--md-sys-color-on-surface:#191C1B;--md-sys-color-surface-variant:#DAE5E1;--md-sys-color-on-surface-variant:#2D3635;`, dark: `--md-sys-color-primary:#53DBC9;--md-sys-color-on-primary:#003732;--md-sys-color-primary-container:#005048;--md-sys-color-on-primary-container:#74F8E5;--md-sys-color-secondary-container:#324B46;--md-sys-color-on-secondary-container:#CCE8E2;--md-sys-color-tertiary-container:#364B34;--md-sys-color-on-tertiary-container:#D0E8CD;--md-sys-color-background:#191C1B;--md-sys-color-on-background:#E0E3E1;--md-sys-color-surface:#191C1B;--md-sys-color-on-surface:#E0E3E1;--md-sys-color-surface-variant:#3F4947;--md-sys-color-on-surface-variant:#BEC9C6;` },
-            yellow: { light: `--md-sys-color-primary:#695F00;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#F5E468;--md-sys-color-on-primary-container:#201C00;--md-sys-color-secondary-container:#E6E2D0;--md-sys-color-on-secondary-container:#1D190B;--md-sys-color-tertiary-container:#CFECC1;--md-sys-color-on-tertiary-container:#092104;--md-sys-color-background:#F2F1E8;--md-sys-color-on-background:#1D1C16;--md-sys-color-surface:#F2F1E8;--md-sys-color-on-surface:#1D1C16;--md-sys-color-surface-variant:#E8E2D0;--md-sys-color-on-surface-variant:#333126;`, dark: `--md-sys-color-primary:#D8C84F;--md-sys-color-on-primary:#373100;--md-sys-color-primary-container:#4F4700;--md-sys-color-on-primary-container:#F5E468;--md-sys-color-secondary-container:#4B473A;--md-sys-color-on-secondary-container:#E6E2D0;--md-sys-color-tertiary-container:#344C2B;--md-sys-color-on-tertiary-container:#CFECC1;--md-sys-color-background:#1D1C16;--md-sys-color-on-background:#E7E2D9;--md-sys-color-surface:#1D1C16;--md-sys-color-on-surface:#E7E2D9;--md-sys-color-surface-variant:#49473A;--md-sys-color-on-surface-variant:#CBC6B5;` },
-            pink: { light: `--md-sys-color-primary:#8C4A60;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFD9E2;--md-sys-color-on-primary-container:#39071D;--md-sys-color-secondary-container:#FDDADA;--md-sys-color-on-secondary-container:#2C1516;--md-sys-color-tertiary-container:#FFD8CB;--md-sys-color-on-tertiary-container:#321105;--md-sys-color-background:#F7EDF0;--md-sys-color-on-background:#201A1B;--md-sys-color-surface:#F7EDF0;--md-sys-color-on-surface:#201A1B;--md-sys-color-surface-variant:#F4DDDF;--md-sys-color-on-surface-variant:#3B2D30;`, dark: `--md-sys-color-primary:#FFB0C8;--md-sys-color-on-primary:#551D32;--md-sys-color-primary-container:#703348;--md-sys-color-on-primary-container:#FFD9E2;--md-sys-color-secondary-container:#5C3F3F;--md-sys-color-on-secondary-container:#FDDADA;--md-sys-color-tertiary-container:#663B2B;--md-sys-color-on-tertiary-container:#FFD8CB;--md-sys-color-background:#201A1B;--md-sys-color-on-background:#ECE0E1;--md-sys-color-surface:#201A1B;--md-sys-color-on-surface:#ECE0E1;--md-sys-color-surface-variant:#524346;--md-sys-color-on-surface-variant:#D7C1C4;` },
-            cyan: { light: `--md-sys-color-primary:#006874;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#97F0FF;--md-sys-color-on-primary-container:#001F24;--md-sys-color-secondary-container:#CEE6EA;--md-sys-color-on-secondary-container:#051F23;--md-sys-color-tertiary-container:#DFE2FF;--md-sys-color-on-tertiary-container:#151937;--md-sys-color-background:#E8F1F3;--md-sys-color-on-background:#191C1D;--md-sys-color-surface:#E8F1F3;--md-sys-color-on-surface:#191C1D;--md-sys-color-surface-variant:#DBE4E6;--md-sys-color-on-surface-variant:#2D3538;`, dark: `--md-sys-color-primary:#4FD8EB;--md-sys-color-on-primary:#00363D;--md-sys-color-primary-container:#004F58;--md-sys-color-on-primary-container:#97F0FF;--md-sys-color-secondary-container:#334B4E;--md-sys-color-on-secondary-container:#CEE6EA;--md-sys-color-tertiary-container:#404364;--md-sys-color-on-tertiary-container:#DFE2FF;--md-sys-color-background:#191C1D;--md-sys-color-on-background:#E1E3E3;--md-sys-color-surface:#191C1D;--md-sys-color-on-surface:#E1E3E3;--md-sys-color-surface-variant:#3F484A;--md-sys-color-on-surface-variant:#BFC8CA;` },
-            slate: { light: `--md-sys-color-primary:#415F91;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D6E3FF;--md-sys-color-on-primary-container:#001B3E;--md-sys-color-secondary-container:#DAE2F9;--md-sys-color-on-secondary-container:#131C2B;--md-sys-color-tertiary-container:#FBD7FC;--md-sys-color-on-tertiary-container:#29132D;--md-sys-color-background:#ECEFF5;--md-sys-color-on-background:#191C20;--md-sys-color-surface:#ECEFF5;--md-sys-color-on-surface:#191C20;--md-sys-color-surface-variant:#E0E2EC;--md-sys-color-on-surface-variant:#31343B;`, dark: `--md-sys-color-primary:#AAC7FF;--md-sys-color-on-primary:#0A305F;--md-sys-color-primary-container:#284777;--md-sys-color-on-primary-container:#D6E3FF;--md-sys-color-secondary-container:#3E4759;--md-sys-color-on-secondary-container:#DAE2F9;--md-sys-color-tertiary-container:#5C3F5F;--md-sys-color-on-tertiary-container:#FBD7FC;--md-sys-color-background:#191C20;--md-sys-color-on-background:#E2E2E9;--md-sys-color-surface:#191C20;--md-sys-color-on-surface:#E2E2E9;--md-sys-color-surface-variant:#44474E;--md-sys-color-on-surface-variant:#C4C6D0;` },
-            red: { light: `--md-sys-color-primary:#B3261E;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#F9DEDC;--md-sys-color-on-primary-container:#410E0B;--md-sys-color-secondary-container:#FFDAD6;--md-sys-color-on-secondary-container:#3E0000;--md-sys-color-tertiary-container:#FFD8E4;--md-sys-color-on-tertiary-container:#31111D;--md-sys-color-background:#F7ECEB;--md-sys-color-on-background:#1C1B1F;--md-sys-color-surface:#F7ECEB;--md-sys-color-on-surface:#1C1B1F;--md-sys-color-surface-variant:#E7E0EC;--md-sys-color-on-surface-variant:#332D30;`, dark: `--md-sys-color-primary:#F2B8B5;--md-sys-color-on-primary:#601410;--md-sys-color-primary-container:#8C1D18;--md-sys-color-on-primary-container:#F9DEDC;--md-sys-color-secondary-container:#733431;--md-sys-color-on-secondary-container:#FFDAD6;--md-sys-color-tertiary-container:#7D293E;--md-sys-color-on-tertiary-container:#FFD8E4;--md-sys-color-background:#1C1B1F;--md-sys-color-on-background:#E6E1E5;--md-sys-color-surface:#1C1B1F;--md-sys-color-on-surface:#E6E1E5;--md-sys-color-surface-variant:#49454F;--md-sys-color-on-surface-variant:#CAC4D0;` },
-            indigo: { light: `--md-sys-color-primary:#4355B9;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#DEE0FF;--md-sys-color-on-primary-container:#00105C;--md-sys-color-secondary-container:#E0E0FF;--md-sys-color-on-secondary-container:#001159;--md-sys-color-tertiary-container:#E2DFFFF;--md-sys-color-on-tertiary-container:#181735;--md-sys-color-background:#ECEDF6;--md-sys-color-on-background:#1B1B1F;--md-sys-color-surface:#ECEDF6;--md-sys-color-on-surface:#1B1B1F;--md-sys-color-surface-variant:#E3E1EC;--md-sys-color-on-surface-variant:#32323A;`, dark: `--md-sys-color-primary:#BAC3FF;--md-sys-color-on-primary:#08218A;--md-sys-color-primary-container:#293CA0;--md-sys-color-on-primary-container:#DEE0FF;--md-sys-color-secondary-container:#3F4376;--md-sys-color-on-secondary-container:#E0E0FF;--md-sys-color-tertiary-container:#403D66;--md-sys-color-on-tertiary-container:#E2DFFFF;--md-sys-color-background:#1B1B1F;--md-sys-color-on-background:#E4E1E6;--md-sys-color-surface:#1B1B1F;--md-sys-color-on-surface:#E4E1E6;--md-sys-color-surface-variant:#46464F;--md-sys-color-on-surface-variant:#C7C5D0;` },
-            lime: { light: `--md-sys-color-primary:#556219;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D9E7CB;--md-sys-color-on-primary-container:#171E00;--md-sys-color-secondary-container:#E2E4D4;--md-sys-color-on-secondary-container:#1B1D15;--md-sys-color-tertiary-container:#DDE6C6;--md-sys-color-on-tertiary-container:#171E0B;--md-sys-color-background:#F0F2E8;--md-sys-color-on-background:#1B1C17;--md-sys-color-surface:#F0F2E8;--md-sys-color-on-surface:#1B1C17;--md-sys-color-surface-variant:#E3E4D8;--md-sys-color-on-surface-variant:#313328;`, dark: `--md-sys-color-primary:#BDCBA6;--md-sys-color-on-primary:#283400;--md-sys-color-primary-container:#3E4A00;--md-sys-color-on-primary-container:#D9E7CB;--md-sys-color-secondary-container:#44483D;--md-sys-color-on-secondary-container:#E2E4D4;--md-sys-color-tertiary-container:#3C4A35;--md-sys-color-on-tertiary-container:#DDE6C6;--md-sys-color-background:#1B1C17;--md-sys-color-on-background:#E4E3DB;--md-sys-color-surface:#1B1C17;--md-sys-color-on-surface:#E4E3DB;--md-sys-color-surface-variant:#46483C;--md-sys-color-on-surface-variant:#C6C8B8;` },
-            sepia: { light: `--md-sys-color-primary:#795900;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFDF9E;--md-sys-color-on-primary-container:#261A00;--md-sys-color-secondary-container:#F7E0C0;--md-sys-color-on-secondary-container:#271904;--md-sys-color-tertiary-container:#FFE0BA;--md-sys-color-on-tertiary-container:#291800;--md-sys-color-background:#F5F0E8;--md-sys-color-on-background:#1F1B16;--md-sys-color-surface:#F5F0E8;--md-sys-color-on-surface:#1F1B16;--md-sys-color-surface-variant:#EBE1CF;--md-sys-color-on-surface-variant:#363025;`, dark: `--md-sys-color-primary:#F5BE48;--md-sys-color-on-primary:#402D00;--md-sys-color-primary-container:#5C4200;--md-sys-color-on-primary-container:#FFDF9E;--md-sys-color-secondary-container:#564434;--md-sys-color-on-secondary-container:#F7E0C0;--md-sys-color-tertiary-container:#59442F;--md-sys-color-on-tertiary-container:#FFE0BA;--md-sys-color-background:#1F1B16;--md-sys-color-on-background:#EAE1D9;--md-sys-color-surface:#1F1B16;--md-sys-color-on-surface:#EAE1D9;--md-sys-color-surface-variant:#4D4639;--md-sys-color-on-surface-variant:#CFC5B4;` },
-            monochrome: { light: `--md-sys-color-primary:#5E5E5E;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#E2E2E2;--md-sys-color-on-primary-container:#1B1B1B;--md-sys-color-secondary-container:#E2E2E2;--md-sys-color-on-secondary-container:#1B1B1B;--md-sys-color-tertiary-container:#E2E2E2;--md-sys-color-on-tertiary-container:#1B1B1B;--md-sys-color-background:#F0F0F0;--md-sys-color-on-background:#1A1C18;--md-sys-color-surface:#F0F0F0;--md-sys-color-on-surface:#1A1C18;--md-sys-color-surface-variant:#E1E3DF;--md-sys-color-on-surface-variant:#2D312F;`, dark: `--md-sys-color-primary:#C6C6C6;--md-sys-color-on-primary:#303030;--md-sys-color-primary-container:#474747;--md-sys-color-on-primary-container:#E2E2E2;--md-sys-color-secondary-container:#474747;--md-sys-color-on-secondary-container:#E2E2E2;--md-sys-color-tertiary-container:#474747;--md-sys-color-on-tertiary-container:#E2E2E2;--md-sys-color-background:#1A1C18;--md-sys-color-on-background:#E3E3E3;--md-sys-color-surface:#1A1C18;--md-sys-color-on-surface:#E3E3E3;--md-sys-color-surface-variant:#444846;--md-sys-color-on-surface-variant:#C4C7C5;` }
+            purple: { light: `--md-sys-color-primary:#6750A4;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#EADDFF;--md-sys-color-on-primary-container:#21005D;--md-sys-color-secondary-container:#E8DEF8;--md-sys-color-on-secondary-container:#1D192B;--md-sys-color-tertiary-container:#FFD8E4;--md-sys-color-on-tertiary-container:#31111D;--md-sys-color-background:#ECE6F0;--md-sys-color-on-background:#1D1B20;--md-sys-color-surface:#ECE6F0;--md-sys-color-on-surface:#1D1B20;--md-sys-color-surface-variant:#DFD8E8;--md-sys-color-on-surface-variant:#313033;`, dark: `--md-sys-color-primary:#D0BCFF;--md-sys-color-on-primary:#381E72;--md-sys-color-primary-container:#4F378B;--md-sys-color-on-primary-container:#EADDFF;--md-sys-color-secondary-container:#4A4458;--md-sys-color-on-secondary-container:#E8DEF8;--md-sys-color-tertiary-container:#633B48;--md-sys-color-on-tertiary-container:#FFD8E4;--md-sys-color-background:#1C1B1E;--md-sys-color-on-background:#E6E1E5;--md-sys-color-surface:#1C1B1E;--md-sys-color-on-surface:#E6E1E5;--md-sys-color-surface-variant:#49454F;--md-sys-color-on-surface-variant:#CAC4D0;` },
+            green: { light: `--md-sys-color-primary:#006C4C;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#89F8D6;--md-sys-color-on-primary-container:#002114;--md-sys-color-secondary-container:#CCE8DB;--md-sys-color-on-secondary-container:#052016;--md-sys-color-tertiary-container:#BEEAF6;--md-sys-color-on-tertiary-container:#001F29;--md-sys-color-background:#E2EDE6;--md-sys-color-on-background:#1A1C1A;--md-sys-color-surface:#E2EDE6;--md-sys-color-on-surface:#1A1C1A;--md-sys-color-surface-variant:#D4E2D9;--md-sys-color-on-surface-variant:#2F3633;`, dark: `--md-sys-color-primary:#6CDBBA;--md-sys-color-on-primary:#003825;--md-sys-color-primary-container:#005138;--md-sys-color-on-primary-container:#89F8D6;--md-sys-color-secondary-container:#334B3F;--md-sys-color-on-secondary-container:#CCE8DB;--md-sys-color-tertiary-container:#204D59;--md-sys-color-on-tertiary-container:#BEEAF6;--md-sys-color-background:#191C1A;--md-sys-color-on-background:#E1E3DF;--md-sys-color-surface:#191C1A;--md-sys-color-on-surface:#E1E3DF;--md-sys-color-surface-variant:#404943;--md-sys-color-on-surface-variant:#BFC9C3;` },
+            rose: { light: `--md-sys-color-primary:#984061;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFD9E2;--md-sys-color-on-primary-container:#3E001D;--md-sys-color-secondary-container:#FDDADA;--md-sys-color-on-secondary-container:#2C1516;--md-sys-color-tertiary-container:#FFD8CB;--md-sys-color-on-tertiary-container:#321105;--md-sys-color-background:#F4E5E8;--md-sys-color-on-background:#201A1B;--md-sys-color-surface:#F4E5E8;--md-sys-color-on-surface:#201A1B;--md-sys-color-surface-variant:#EACDD3;--md-sys-color-on-surface-variant:#3B2D30;`, dark: `--md-sys-color-primary:#FFB0C8;--md-sys-color-on-primary:#551D32;--md-sys-color-primary-container:#703348;--md-sys-color-on-primary-container:#FFD9E2;--md-sys-color-secondary-container:#5C3F3F;--md-sys-color-on-secondary-container:#FDDADA;--md-sys-color-tertiary-container:#663B2B;--md-sys-color-on-tertiary-container:#FFD8CB;--md-sys-color-background:#201A1B;--md-sys-color-on-background:#ECE0E1;--md-sys-color-surface:#201A1B;--md-sys-color-on-surface:#ECE0E1;--md-sys-color-surface-variant:#524346;--md-sys-color-on-surface-variant:#D7C1C4;` },
+            blue: { light: `--md-sys-color-primary:#0061A4;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D1E4FF;--md-sys-color-on-primary-container:#001D36;--md-sys-color-secondary-container:#D7E3F7;--md-sys-color-on-secondary-container:#101C2B;--md-sys-color-tertiary-container:#E2E2FF;--md-sys-color-on-tertiary-container:#191637;--md-sys-color-background:#E2EAF2;--md-sys-color-on-background:#1A1C1E;--md-sys-color-surface:#E2EAF2;--md-sys-color-on-surface:#1A1C1E;--md-sys-color-surface-variant:#D4DEE8;--md-sys-color-on-surface-variant:#2F3339;`, dark: `--md-sys-color-primary:#9ECAFF;--md-sys-color-on-primary:#003258;--md-sys-color-primary-container:#00497D;--md-sys-color-on-primary-container:#D1E4FF;--md-sys-color-secondary-container:#3B4858;--md-sys-color-on-secondary-container:#D7E3F7;--md-sys-color-tertiary-container:#423F62;--md-sys-color-on-tertiary-container:#E2E2FF;--md-sys-color-background:#1A1C1E;--md-sys-color-on-background:#E2E2E6;--md-sys-color-surface:#1A1C1E;--md-sys-color-on-surface:#E2E2E6;--md-sys-color-surface-variant:#43474E;--md-sys-color-on-surface-variant:#C3C7CF;` },
+            orange: { light: `--md-sys-color-primary:#8F4C38;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFDBD1;--md-sys-color-on-primary-container:#3A0B01;--md-sys-color-secondary-container:#FFDBD1;--md-sys-color-on-secondary-container:#2C150F;--md-sys-color-tertiary-container:#F7D8B7;--md-sys-color-on-tertiary-container:#271600;--md-sys-color-background:#F4E6E2;--md-sys-color-on-background:#221A18;--md-sys-color-surface:#F4E6E2;--md-sys-color-on-surface:#221A18;--md-sys-color-surface-variant:#EAD5CF;--md-sys-color-on-surface-variant:#3B2D29;`, dark: `--md-sys-color-primary:#FFB5A0;--md-sys-color-on-primary:#561F0F;--md-sys-color-primary-container:#723523;--md-sys-color-on-primary-container:#FFDBD1;--md-sys-color-secondary-container:#5D3F37;--md-sys-color-on-secondary-container:#FFDBD1;--md-sys-color-tertiary-container:#524029;--md-sys-color-on-tertiary-container:#F7D8B7;--md-sys-color-background:#221A18;--md-sys-color-on-background:#EAE0DD;--md-sys-color-surface:#221A18;--md-sys-color-on-surface:#EAE0DD;--md-sys-color-surface-variant:#53433F;--md-sys-color-on-surface-variant:#D8C2BC;` },
+            teal: { light: `--md-sys-color-primary:#006A60;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#74F8E5;--md-sys-color-on-primary-container:#00201C;--md-sys-color-secondary-container:#CCE8E2;--md-sys-color-on-secondary-container:#05201C;--md-sys-color-tertiary-container:#D0E8CD;--md-sys-color-on-tertiary-container:#09200B;--md-sys-color-background:#E0EFEA;--md-sys-color-on-background:#191C1B;--md-sys-color-surface:#E0EFEA;--md-sys-color-on-surface:#191C1B;--md-sys-color-surface-variant:#D0E5DF;--md-sys-color-on-surface-variant:#2D3635;`, dark: `--md-sys-color-primary:#53DBC9;--md-sys-color-on-primary:#003732;--md-sys-color-primary-container:#005048;--md-sys-color-on-primary-container:#74F8E5;--md-sys-color-secondary-container:#324B46;--md-sys-color-on-secondary-container:#CCE8E2;--md-sys-color-tertiary-container:#364B34;--md-sys-color-on-tertiary-container:#D0E8CD;--md-sys-color-background:#191C1B;--md-sys-color-on-background:#E0E3E1;--md-sys-color-surface:#191C1B;--md-sys-color-on-surface:#E0E3E1;--md-sys-color-surface-variant:#3F4947;--md-sys-color-on-surface-variant:#BEC9C6;` },
+            yellow: { light: `--md-sys-color-primary:#695F00;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#F5E468;--md-sys-color-on-primary-container:#201C00;--md-sys-color-secondary-container:#E6E2D0;--md-sys-color-on-secondary-container:#1D190B;--md-sys-color-tertiary-container:#CFECC1;--md-sys-color-on-tertiary-container:#092104;--md-sys-color-background:#EFEBE1;--md-sys-color-on-background:#1D1C16;--md-sys-color-surface:#EFEBE1;--md-sys-color-on-surface:#1D1C16;--md-sys-color-surface-variant:#E2DBCC;--md-sys-color-on-surface-variant:#333126;`, dark: `--md-sys-color-primary:#D8C84F;--md-sys-color-on-primary:#373100;--md-sys-color-primary-container:#4F4700;--md-sys-color-on-primary-container:#F5E468;--md-sys-color-secondary-container:#4B473A;--md-sys-color-on-secondary-container:#E6E2D0;--md-sys-color-tertiary-container:#344C2B;--md-sys-color-on-tertiary-container:#CFECC1;--md-sys-color-background:#1D1C16;--md-sys-color-on-background:#E7E2D9;--md-sys-color-surface:#1D1C16;--md-sys-color-on-surface:#E7E2D9;--md-sys-color-surface-variant:#49473A;--md-sys-color-on-surface-variant:#CBC6B5;` },
+            pink: { light: `--md-sys-color-primary:#8C4A60;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFD9E2;--md-sys-color-on-primary-container:#39071D;--md-sys-color-secondary-container:#FDDADA;--md-sys-color-on-secondary-container:#2C1516;--md-sys-color-tertiary-container:#FFD8CB;--md-sys-color-on-tertiary-container:#321105;--md-sys-color-background:#F4E5E8;--md-sys-color-on-background:#201A1B;--md-sys-color-surface:#F4E5E8;--md-sys-color-on-surface:#201A1B;--md-sys-color-surface-variant:#EACDD3;--md-sys-color-on-surface-variant:#3B2D30;`, dark: `--md-sys-color-primary:#FFB0C8;--md-sys-color-on-primary:#551D32;--md-sys-color-primary-container:#703348;--md-sys-color-on-primary-container:#FFD9E2;--md-sys-color-secondary-container:#5C3F3F;--md-sys-color-on-secondary-container:#FDDADA;--md-sys-color-tertiary-container:#663B2B;--md-sys-color-on-tertiary-container:#FFD8CB;--md-sys-color-background:#201A1B;--md-sys-color-on-background:#ECE0E1;--md-sys-color-surface:#201A1B;--md-sys-color-on-surface:#ECE0E1;--md-sys-color-surface-variant:#524346;--md-sys-color-on-surface-variant:#D7C1C4;` },
+            cyan: { light: `--md-sys-color-primary:#006874;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#97F0FF;--md-sys-color-on-primary-container:#001F24;--md-sys-color-secondary-container:#CEE6EA;--md-sys-color-on-secondary-container:#051F23;--md-sys-color-tertiary-container:#DFE2FF;--md-sys-color-on-tertiary-container:#151937;--md-sys-color-background:#E0EFF2;--md-sys-color-on-background:#191C1D;--md-sys-color-surface:#E0EFF2;--md-sys-color-on-surface:#191C1D;--md-sys-color-surface-variant:#D0E5E8;--md-sys-color-on-surface-variant:#2D3538;`, dark: `--md-sys-color-primary:#4FD8EB;--md-sys-color-on-primary:#00363D;--md-sys-color-primary-container:#004F58;--md-sys-color-on-primary-container:#97F0FF;--md-sys-color-secondary-container:#334B4E;--md-sys-color-on-secondary-container:#CEE6EA;--md-sys-color-tertiary-container:#404364;--md-sys-color-on-tertiary-container:#DFE2FF;--md-sys-color-background:#191C1D;--md-sys-color-on-background:#E1E3E3;--md-sys-color-surface:#191C1D;--md-sys-color-on-surface:#E1E3E3;--md-sys-color-surface-variant:#3F484A;--md-sys-color-on-surface-variant:#BFC8CA;` },
+            slate: { light: `--md-sys-color-primary:#415F91;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D6E3FF;--md-sys-color-on-primary-container:#001B3E;--md-sys-color-secondary-container:#DAE2F9;--md-sys-color-on-secondary-container:#131C2B;--md-sys-color-tertiary-container:#FBD7FC;--md-sys-color-on-tertiary-container:#29132D;--md-sys-color-background:#E5E8F0;--md-sys-color-on-background:#191C20;--md-sys-color-surface:#E5E8F0;--md-sys-color-on-surface:#191C20;--md-sys-color-surface-variant:#D7DCE7;--md-sys-color-on-surface-variant:#31343B;`, dark: `--md-sys-color-primary:#AAC7FF;--md-sys-color-on-primary:#0A305F;--md-sys-color-primary-container:#284777;--md-sys-color-on-primary-container:#D6E3FF;--md-sys-color-secondary-container:#3E4759;--md-sys-color-on-secondary-container:#DAE2F9;--md-sys-color-tertiary-container:#5C3F5F;--md-sys-color-on-tertiary-container:#FBD7FC;--md-sys-color-background:#191C20;--md-sys-color-on-background:#E2E2E9;--md-sys-color-surface:#191C20;--md-sys-color-on-surface:#E2E2E9;--md-sys-color-surface-variant:#44474E;--md-sys-color-on-surface-variant:#C4C6D0;` },
+            red: { light: `--md-sys-color-primary:#B3261E;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#F9DEDC;--md-sys-color-on-primary-container:#410E0B;--md-sys-color-secondary-container:#FFDAD6;--md-sys-color-on-secondary-container:#3E0000;--md-sys-color-tertiary-container:#FFD8E4;--md-sys-color-on-tertiary-container:#31111D;--md-sys-color-background:#F4E5E4;--md-sys-color-on-background:#1C1B1F;--md-sys-color-surface:#F4E5E4;--md-sys-color-on-surface:#1C1B1F;--md-sys-color-surface-variant:#EACDCC;--md-sys-color-on-surface-variant:#332D30;`, dark: `--md-sys-color-primary:#F2B8B5;--md-sys-color-on-primary:#601410;--md-sys-color-primary-container:#8C1D18;--md-sys-color-on-primary-container:#F9DEDC;--md-sys-color-secondary-container:#733431;--md-sys-color-on-secondary-container:#FFDAD6;--md-sys-color-tertiary-container:#7D293E;--md-sys-color-on-tertiary-container:#FFD8E4;--md-sys-color-background:#1C1B1F;--md-sys-color-on-background:#E6E1E5;--md-sys-color-surface:#1C1B1F;--md-sys-color-on-surface:#E6E1E5;--md-sys-color-surface-variant:#49454F;--md-sys-color-on-surface-variant:#CAC4D0;` },
+            indigo: { light: `--md-sys-color-primary:#4355B9;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#DEE0FF;--md-sys-color-on-primary-container:#00105C;--md-sys-color-secondary-container:#E0E0FF;--md-sys-color-on-secondary-container:#001159;--md-sys-color-tertiary-container:#E2DFFFF;--md-sys-color-on-tertiary-container:#181735;--md-sys-color-background:#E6E8F4;--md-sys-color-on-background:#1B1B1F;--md-sys-color-surface:#E6E8F4;--md-sys-color-on-surface:#1B1B1F;--md-sys-color-surface-variant:#D8DAEA;--md-sys-color-on-surface-variant:#32323A;`, dark: `--md-sys-color-primary:#BAC3FF;--md-sys-color-on-primary:#08218A;--md-sys-color-primary-container:#293CA0;--md-sys-color-on-primary-container:#DEE0FF;--md-sys-color-secondary-container:#3F4376;--md-sys-color-on-secondary-container:#E0E0FF;--md-sys-color-tertiary-container:#403D66;--md-sys-color-on-tertiary-container:#E2DFFFF;--md-sys-color-background:#1B1B1F;--md-sys-color-on-background:#E4E1E6;--md-sys-color-surface:#1B1B1F;--md-sys-color-on-surface:#E4E1E6;--md-sys-color-surface-variant:#46464F;--md-sys-color-on-surface-variant:#C7C5D0;` },
+            lime: { light: `--md-sys-color-primary:#556219;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#D9E7CB;--md-sys-color-on-primary-container:#171E00;--md-sys-color-secondary-container:#E2E4D4;--md-sys-color-on-secondary-container:#1B1D15;--md-sys-color-tertiary-container:#DDE6C6;--md-sys-color-on-tertiary-container:#171E0B;--md-sys-color-background:#EEF1E4;--md-sys-color-on-background:#1B1C17;--md-sys-color-surface:#EEF1E4;--md-sys-color-on-surface:#1B1C17;--md-sys-color-surface-variant:#E0E4D1;--md-sys-color-on-surface-variant:#313328;`, dark: `--md-sys-color-primary:#BDCBA6;--md-sys-color-on-primary:#283400;--md-sys-color-primary-container:#3E4A00;--md-sys-color-on-primary-container:#D9E7CB;--md-sys-color-secondary-container:#44483D;--md-sys-color-on-secondary-container:#E2E4D4;--md-sys-color-tertiary-container:#3C4A35;--md-sys-color-on-tertiary-container:#DDE6C6;--md-sys-color-background:#1B1C17;--md-sys-color-on-background:#E4E3DB;--md-sys-color-surface:#1B1C17;--md-sys-color-on-surface:#E4E3DB;--md-sys-color-surface-variant:#46483C;--md-sys-color-on-surface-variant:#C6C8B8;` },
+            sepia: { light: `--md-sys-color-primary:#795900;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#FFDF9E;--md-sys-color-on-primary-container:#261A00;--md-sys-color-secondary-container:#F7E0C0;--md-sys-color-on-secondary-container:#271904;--md-sys-color-tertiary-container:#FFE0BA;--md-sys-color-on-tertiary-container:#291800;--md-sys-color-background:#F2EBE1;--md-sys-color-on-background:#1F1B16;--md-sys-color-surface:#F2EBE1;--md-sys-color-on-surface:#1F1B16;--md-sys-color-surface-variant:#E6DCCC;--md-sys-color-on-surface-variant:#363025;`, dark: `--md-sys-color-primary:#F5BE48;--md-sys-color-on-primary:#402D00;--md-sys-color-primary-container:#5C4200;--md-sys-color-on-primary-container:#FFDF9E;--md-sys-color-secondary-container:#564434;--md-sys-color-on-secondary-container:#F7E0C0;--md-sys-color-tertiary-container:#59442F;--md-sys-color-on-tertiary-container:#FFE0BA;--md-sys-color-background:#1F1B16;--md-sys-color-on-background:#EAE1D9;--md-sys-color-surface:#1F1B16;--md-sys-color-on-surface:#EAE1D9;--md-sys-color-surface-variant:#4D4639;--md-sys-color-on-surface-variant:#CFC5B4;` },
+            monochrome: { light: `--md-sys-color-primary:#5E5E5E;--md-sys-color-on-primary:#FFFFFF;--md-sys-color-primary-container:#E2E2E2;--md-sys-color-on-primary-container:#1B1B1B;--md-sys-color-secondary-container:#E2E2E2;--md-sys-color-on-secondary-container:#1B1B1B;--md-sys-color-tertiary-container:#E2E2E2;--md-sys-color-on-tertiary-container:#1B1B1B;--md-sys-color-background:#EAEAEA;--md-sys-color-on-background:#1A1C18;--md-sys-color-surface:#EAEAEA;--md-sys-color-on-surface:#1A1C18;--md-sys-color-surface-variant:#DDDDDD;--md-sys-color-on-surface-variant:#2D312F;`, dark: `--md-sys-color-primary:#C6C6C6;--md-sys-color-on-primary:#303030;--md-sys-color-primary-container:#474747;--md-sys-color-on-primary-container:#E2E2E2;--md-sys-color-secondary-container:#474747;--md-sys-color-on-secondary-container:#E2E2E2;--md-sys-color-tertiary-container:#474747;--md-sys-color-on-tertiary-container:#E2E2E2;--md-sys-color-background:#1A1C18;--md-sys-color-on-background:#E3E3E3;--md-sys-color-surface:#1A1C18;--md-sys-color-on-surface:#E3E3E3;--md-sys-color-surface-variant:#444846;--md-sys-color-on-surface-variant:#C4C7C5;` }
         };
 
         const DOM = {
@@ -527,16 +545,40 @@
         let currentSelection = { text: "", nodeIdx: -1 };
         let activeAnnotationId = null;
         
+        // Z-Index Tracker yang Bulletproof buat Native Android Back Button
         window.addEventListener('popstate', (e) => {
-            if (!document.getElementById('ai-modal').classList.contains('opacity-0')) { closeAiModal(true); }
-            else if (!document.getElementById('show-note-modal').classList.contains('opacity-0')) { closeShowNoteModal(true); }
-            else if (!document.getElementById('note-modal').classList.contains('opacity-0')) { _closeModalAction('note-modal', 'note-sheet', true, true); }
-            else if (!document.getElementById('b-opt-modal').classList.contains('opacity-0')) { _closeModalAction('b-opt-modal', 'b-opt-sheet', false, true); }
-            else if (!document.getElementById('edit-modal').classList.contains('opacity-0')) { _closeModalAction('edit-modal', 'edit-sheet', true, true); }
-            else if (!document.getElementById('global-settings-modal').classList.contains('opacity-0')) { _closeModalAction('global-settings-modal', 'global-settings-sheet', false, true); }
-            else if (!document.getElementById('welcome-modal').classList.contains('opacity-0')) { closeWelcome(true); }
-            else if (activePanel) { _closeSidePanelsAction(true); } 
-            else if (!DOM.readView.classList.contains('translate-y-full')) { _closeReaderAction(true); }
+            let activeUI = [];
+            
+            const checkMod = (id, closeFn, z) => {
+                const el = document.getElementById(id);
+                // Hanya deteksi elemen yang sepenuhnya muncul dan belum proses ngilang
+                if (el && !el.classList.contains('opacity-0') && !el.classList.contains('hidden')) {
+                    activeUI.push({ closeFn, z });
+                }
+            };
+            
+            checkMod('welcome-modal', () => closeWelcome(true), 200);
+            checkMod('edit-modal', () => _closeModalAction('edit-modal', 'edit-sheet', true, true), 120);
+            checkMod('note-modal', () => _closeModalAction('note-modal', 'note-sheet', true, true), 120);
+            checkMod('show-note-modal', () => closeShowNoteModal(true), 120);
+            checkMod('ai-modal', () => closeAiModal(true), 120);
+            checkMod('global-settings-modal', () => _closeModalAction('global-settings-modal', 'global-settings-sheet', false, true), 100);
+            checkMod('b-opt-modal', () => _closeModalAction('b-opt-modal', 'b-opt-sheet', false, true), 100);
+            
+            if (activePanel) {
+                activeUI.push({ closeFn: () => _closeSidePanelsAction(true), z: 40 });
+            }
+            if (!DOM.readView.classList.contains('translate-y-full')) {
+                activeUI.push({ closeFn: () => _closeReaderAction(true), z: 20 });
+            }
+
+            // Urutkan elemen dari Z-Index yang paling atas (tertinggi ke terendah)
+            activeUI.sort((a, b) => b.z - a.z);
+            
+            // Cukup tutup SATU saja (yang paling atas)
+            if (activeUI.length > 0) {
+                activeUI[0].closeFn();
+            }
         });
 
         function pushAppHistory(stateName) { history.pushState({ state: stateName }, '', `#${stateName}`); }
@@ -702,7 +744,7 @@
                     boxes[2].querySelector('h3').innerText = d.privTitle; boxes[2].querySelector('p').innerHTML = d.privDesc;
                     boxes[3].querySelector('h3').innerText = d.wikiTitle; boxes[3].querySelector('p').innerHTML = d.wikiDesc;
                 }
-                const ack = el('welcome-sheet').querySelector('button[onclick="closeWelcome()"]'); if(ack) ack.innerText = d.ackBtn;
+                const ack = el('welcome-sheet').querySelector('button[onclick="history.back()"]'); if(ack) ack.innerText = d.ackBtn;
             }
 
             if(el('global-settings-sheet')) {
@@ -806,7 +848,7 @@
                 else {
                     // Extract background hex from rootVars to match the tinted light mode
                     const bgMatch = rootVars.match(/--md-sys-color-background:(#[A-Fa-f0-9]{6})/);
-                    metaTheme.setAttribute("content", bgMatch ? bgMatch[1] : "#F3EDF7");
+                    metaTheme.setAttribute("content", bgMatch ? bgMatch[1] : "#EAE4F2");
                 }
             }
 
@@ -908,7 +950,7 @@
                 bar.classList.add('hidden');
                 searchBar.classList.add('hidden');
                 exitBtn.classList.remove('hidden');
-                if(activePanel) { _closeSidePanelsAction(); } 
+                if(activePanel) { history.back(); } 
             }
         };
 
@@ -1013,7 +1055,6 @@
             card.style = bgStyle;
 
             if (isSlider) {
-                // Layout khusus untuk Horizontal Slider
                 card.innerHTML = `
                     ${textOverlay}
                     <div class="relative z-10 flex flex-col h-full justify-between pointer-events-none">
@@ -1032,7 +1073,6 @@
                     </div>
                 `;
             } else {
-                // Layout asli untuk Grid Vertikal
                 card.innerHTML = `
                     ${textOverlay}
                     <div class="relative z-10 flex flex-col h-full justify-between pointer-events-none">
@@ -1065,10 +1105,8 @@
             if(filterText) filteredLib = library.filter(b => b.title.toLowerCase().includes(filterText.toLowerCase()));
             DOM.count.textContent = `${filteredLib.length} ${i18n[wikiLang].booksCount}`;
             
-            // Render Top Books / Continue Reading (Only > 0% and when not searching)
             let topBooks = [];
             if (!filterText) {
-                // Mengambil buku yang punya progress > 0, di-sort supaya yang progresnya paling gede/terbaru di depan
                 topBooks = library.filter(b => b.progressPct > 0).sort((a,b) => b.progressPct - a.progressPct);
             }
 
@@ -1082,7 +1120,6 @@
                 DOM.topSection.classList.add('hidden');
             }
             
-            // Render Main Grid
             if (filteredLib.length === 0) { 
                 DOM.empty.classList.remove('hidden'); 
                 DOM.grid.classList.add('hidden'); 
@@ -1172,45 +1209,64 @@
 
         function openBook(book) {
             activeBookId = book.id; pushAppHistory(`reader-${book.id}`);
-            DOM.libView.style.transform = 'scale(0.95)'; DOM.readView.classList.remove('translate-y-full');
-            DOM.title.textContent = book.title; DOM.inner.innerHTML = ''; DOM.tocList.innerHTML = '';
             
-            let hCounter = 0; const fragment = document.createDocumentFragment(); let currentHeadingId = null;
-
-            book.nodes.forEach((node, i) => {
-                let el;
-                // Get annotations for this node
-                const annots = (book.annotations || []).filter(a => a.nodeIdx === i);
-
-                if (node.tag === 'img') {
-                    el = document.createElement('img'); el.src = node.src; el.id = `node-${i}`;
-                    el.className = "w-full max-w-lg mx-auto rounded-2xl my-8 object-contain shadow-md"; el.loading = "lazy";
-                } else {
-                    el = document.createElement(node.tag); 
-                    el.innerHTML = renderNodeText(node.text, annots); 
-                    el.id = `node-${i}`;
-                    if (node.tag === 'h1' || node.tag === 'h2') {
-                        hCounter++; currentHeadingId = el.id; 
-                        el.className = node.tag === 'h1' ? "text-3xl font-bold tracking-tight mt-12 mb-6 text-m3-primary leading-snug break-words" : "text-xl font-bold mt-10 mb-4 text-m3-onSurfaceVariant border-b border-m3-surfaceVariant pb-2 break-words";
-                        const tocItem = document.createElement('button'); tocItem.id = `toc-btn-${el.id}`;
-                        tocItem.className = `text-left text-sm p-3 rounded-2xl hover:bg-m3-surface transition-all duration-300 ${node.tag==='h1'?'font-bold text-m3-primary':'ml-4 opacity-80'}`;
-                        tocItem.textContent = node.text;
-                        tocItem.onclick = () => { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.back(); };
-                        DOM.tocList.appendChild(tocItem);
-                    } else { el.className = "text-m3-onSurface opacity-90 mb-5 tracking-wide"; }
-                }
-                el.dataset.headingId = currentHeadingId; fragment.appendChild(el);
-            });
-            DOM.inner.appendChild(fragment);
-            if(hCounter === 0) DOM.tocList.innerHTML = "<p class='text-sm opacity-50 block p-3'>No Table of Contents.</p>";
-
-            setupIntersectionObserver();
-            DOM.searchBar.classList.add('hidden'); DOM.searchRes.classList.add('hidden'); DOM.searchInput.value = '';
-
+            // Animasi transisi layar reader naik
+            DOM.libView.style.transform = 'scale(0.95)'; 
+            DOM.readView.classList.remove('translate-y-full');
+            DOM.title.textContent = book.title; 
+            
+            // Tampilkan M3 Expressive Loading Spinner
+            const loader = document.getElementById('reader-loading-overlay');
+            loader.classList.remove('hidden');
+            requestAnimationFrame(() => loader.classList.remove('opacity-0'));
+            
+            DOM.inner.innerHTML = ''; 
+            DOM.tocList.innerHTML = '';
+            
+            // Delay diperpanjang 600ms supaya layar selesai nge-slide ke atas dengan mulus sebelum proses render yang berat jalan
             setTimeout(() => {
+                let hCounter = 0; 
+                const fragment = document.createDocumentFragment(); 
+                let currentHeadingId = null;
+
+                book.nodes.forEach((node, i) => {
+                    let el;
+                    const annots = (book.annotations || []).filter(a => a.nodeIdx === i);
+
+                    if (node.tag === 'img') {
+                        el = document.createElement('img'); el.src = node.src; el.id = `node-${i}`;
+                        el.className = "w-full max-w-lg mx-auto rounded-2xl my-8 object-contain shadow-md"; el.loading = "lazy";
+                    } else {
+                        el = document.createElement(node.tag); 
+                        el.innerHTML = renderNodeText(node.text, annots); 
+                        el.id = `node-${i}`;
+                        if (node.tag === 'h1' || node.tag === 'h2') {
+                            hCounter++; currentHeadingId = el.id; 
+                            el.className = node.tag === 'h1' ? "text-3xl font-bold tracking-tight mt-12 mb-6 text-m3-primary leading-snug break-words" : "text-xl font-bold mt-10 mb-4 text-m3-onSurfaceVariant border-b border-m3-surfaceVariant pb-2 break-words";
+                            const tocItem = document.createElement('button'); tocItem.id = `toc-btn-${el.id}`;
+                            tocItem.className = `text-left text-sm p-3 rounded-2xl hover:bg-m3-surface transition-all duration-300 ${node.tag==='h1'?'font-bold text-m3-primary':'ml-4 opacity-80'}`;
+                            tocItem.textContent = node.text;
+                            tocItem.onclick = () => { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.back(); };
+                            DOM.tocList.appendChild(tocItem);
+                        } else { el.className = "text-m3-onSurface opacity-90 mb-5 tracking-wide"; }
+                    }
+                    el.dataset.headingId = currentHeadingId; fragment.appendChild(el);
+                });
+                DOM.inner.appendChild(fragment);
+                
+                if(hCounter === 0) DOM.tocList.innerHTML = "<p class='text-sm opacity-50 block p-3'>No Table of Contents.</p>";
+
+                setupIntersectionObserver();
+                DOM.searchBar.classList.add('hidden'); DOM.searchRes.classList.add('hidden'); DOM.searchInput.value = '';
+
                 if (book.lastReadId) { const target = document.getElementById(book.lastReadId); if (target) target.scrollIntoView({ behavior: 'auto', block: 'center' }); } 
                 else { DOM.readContent.scrollTo(0,0); }
-            }, 100);
+
+                // Fade out layar loading dengan smooth
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 500);
+                
+            }, 600); 
         }
 
         function _closeReaderAction(isFromHistory = false) {
@@ -1219,7 +1275,6 @@
             if(observer) observer.disconnect(); renderLibrary(DOM.globalSearch.value); activeBookId = null;
             window.getSelection().removeAllRanges();
             
-            // Hide selection menu automatically on close
             const menu = document.getElementById('selection-menu');
             if(menu) {
                 menu.classList.add('opacity-0', 'scale-95');
@@ -1840,6 +1895,3 @@
     </script>
 </body>
 </html>
-
-
-```
