@@ -10,14 +10,13 @@
     <meta name="theme-color" content="#1C1B1E">
     <title>Baca.</title>
     
-    <!-- External Libs -->
-    <script src="libs/tailwindcss.js"></script>
+    <!-- External Libs (Tailwind Runtime dihapus, HP jadi lega) -->
     <script src="libs/pdf.min.js"></script>
     <script src="libs/localforage.min.js"></script>
     <script src="libs/jszip.min.js"></script>
     <script src="libs/lucide.js"></script>
 
-    <!-- Konfigurasi Statis (Tailwind, Palet, i18n) -->
+    <!-- Konfigurasi Statis (Palet, i18n) -->
     <script src="js/config.js"></script>
 
     <!-- Google Fonts -->
@@ -26,8 +25,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Space+Mono&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
     
-    <!-- CSS Terpisah & Tema Dinamis -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- CSS Terpisah & Tema Dinamis (Sekarang panggil output.css hasil compile) -->
+    <link rel="stylesheet" href="css/output.css">
     <style id="dynamic-theme"></style>
 </head>
 <body class="font-sans flex flex-col relative">
@@ -52,7 +51,7 @@
             </div>
         </header>
 
-        <div id="library-content-scroll" class="flex-1 overflow-y-auto w-full px-5 pb-32">
+        <div id="library-content-scroll" class="flex-1 overflow-y-auto overflow-x-hidden w-full px-5 pb-32 relative">
             
             <div id="loading-state" class="hidden mb-8 p-5 bg-m3-secondaryContainer text-m3-onSecondaryContainer rounded-[28px]">
                 <div class="flex justify-between items-end mb-3">
@@ -64,12 +63,23 @@
                 </div>
             </div>
 
+            <!-- VIEW: SEMUA BUKU -->
             <div id="continue-reading-section" class="hidden mb-8 -mx-5 mt-2">
                 <h2 id="str-continue-reading" class="text-base font-bold mb-4 text-m3-onBg px-5 tracking-tight">Lanjutkan Membaca</h2>
                 <div id="top-books-slider" class="flex gap-3 overflow-x-auto snap-x snap-proximity px-5 pb-2 hide-scroll" style="scroll-padding-left: 1.25rem;">
                 </div>
             </div>
 
+            <!-- PINNED BOOKS SECTION -->
+            <div id="pinned-books-section" class="hidden mb-8 mt-2">
+                <div class="flex items-center gap-2 mb-4">
+                    <i data-lucide="pin" class="w-5 h-5 text-m3-primary fill-m3-primary/20"></i>
+                    <h2 id="str-pinned-books" class="text-base font-bold text-m3-onBg tracking-tight">Buku Disematkan</h2>
+                </div>
+                <div id="pinned-book-grid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full"></div>
+            </div>
+
+            <!-- REGULAR COLLECTION SECTION -->
             <div id="collection-heading" class="hidden mb-4 mt-2">
                 <h2 class="text-base font-bold text-m3-onBg tracking-tight" id="str-book-collection">Koleksi Buku</h2>
             </div>
@@ -126,6 +136,15 @@
             <div id="toc-panel" class="side-panel absolute right-0 top-0 bottom-0 w-72 bg-m3-surfaceVariant p-6 transform translate-x-full opacity-0 z-40 overflow-y-auto rounded-l-[32px]">
                 <h3 id="str-toc-title" class="text-lg font-bold mb-6 text-m3-onSurfaceVariant flex items-center gap-2"><i data-lucide="list-tree"></i> Daftar Isi</h3>
                 <div id="toc-list" class="space-y-2 flex flex-col pb-20"></div>
+            </div>
+
+            <!-- Panel Bookmark -->
+            <div id="bookmark-panel" class="side-panel absolute right-0 top-0 bottom-0 w-72 bg-m3-surfaceVariant p-6 transform translate-x-full opacity-0 z-40 overflow-y-auto rounded-l-[32px]">
+                <h3 id="str-bookmark-title" class="text-lg font-bold mb-6 text-m3-onSurfaceVariant flex items-center gap-2"><i data-lucide="bookmark"></i> Bookmark</h3>
+                <div id="bookmark-list" class="space-y-2 flex flex-col pb-20">
+                    <!-- List Bookmark di-render dari app.js nanti -->
+                </div>
+                <div id="bookmark-empty" class="text-sm opacity-50 p-3 text-center hidden font-bold" id="str-bookmark-empty">Belum ada pembatas buku.</div>
             </div>
             
             <!-- Panel Tampilan & Pencarian -->
@@ -197,6 +216,10 @@
                     <i data-lucide="list" class="w-5 h-5 pointer-events-none"></i>
                     <span id="str-nav-toc" class="text-[10px] font-bold pointer-events-none">Daftar Isi</span>
                 </button>
+                <button id="btn-bookmarks" onclick="togglePanel(DOM.bookmarkPanel, 'bookmark', 'btn-bookmarks')" class="capsule-btn flex-col gap-1 text-m3-onSurfaceVariant transition-all">
+                    <i data-lucide="bookmark" class="w-5 h-5 pointer-events-none"></i>
+                    <span id="str-nav-bookmark" class="text-[10px] font-bold pointer-events-none">Bookmark</span>
+                </button>
                 <button id="btn-settings" class="capsule-btn flex-col gap-1 text-m3-onSurfaceVariant transition-all">
                     <i data-lucide="type" class="w-5 h-5 pointer-events-none"></i>
                     <span id="str-nav-text" class="text-[10px] font-bold pointer-events-none">Teks</span>
@@ -264,25 +287,15 @@
 
             <h4 id="str-set-palette" class="text-xs font-bold opacity-70 mb-3 px-1 uppercase tracking-wider">Palet Tema</h4>
             <div class="grid grid-cols-5 gap-3 mb-4">
-                <!-- Orchid / Lilac (Sunset Violet) -->
                 <button onclick="setTheme('orchid')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #8B5CF6;" title="Sunset Orchid"></button>
-                <!-- Olive Green (Organic Sage Olive) -->
                 <button onclick="setTheme('olive')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #4F6F2E;" title="Organic Olive"></button>
-                <!-- Coral Electric (Terracotta Dusk) -->
                 <button onclick="setTheme('coral')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #D95232;" title="Terracotta Coral"></button>
-                <!-- Teal Cyber (Oceanic Deep Teal) -->
                 <button onclick="setTheme('teal')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #006A7B;" title="Oceanic Teal"></button>
-                <!-- Lavender Night (Regal Purple & Lime) -->
                 <button onclick="setTheme('lavender')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #5E17EB;" title="Regal Lavender"></button>
-                <!-- Amber Rose (Crimson Rosewood) -->
                 <button onclick="setTheme('rose')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #BE123C;" title="Crimson Rose"></button>
-                <!-- Lime Punch (Forest Lime) -->
                 <button onclick="setTheme('lime')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #4C6A00;" title="Forest Lime"></button>
-                <!-- Sand Breeze (Classic Sepia Parchment) -->
                 <button onclick="setTheme('sand')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #8D6E63;" title="Warm Sand"></button>
-                <!-- Monochrome Tech (Grey Slate & Amber) -->
                 <button onclick="setTheme('monochrome')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #37474F;" title="Monochrome Slate"></button>
-                <!-- Blueberry (Electric Cobalt) -->
                 <button onclick="setTheme('blueberry')" class="btn-morph w-full aspect-square rounded-2xl border-none transition-transform active:scale-90 shadow-sm" style="background-color: #1A237E;" title="Electric Cobalt"></button>
             </div>
             
@@ -312,7 +325,6 @@
                 </div>
             </div>
 
-            <!-- Fitur Data Backup / Restore via Clipboard -->
             <h4 id="str-set-data" class="text-xs font-bold opacity-70 mb-3 px-1 mt-6 uppercase tracking-wider">Data Aplikasi</h4>
             <div class="flex gap-2 mb-4">
                 <button onclick="exportData()" class="flex-1 flex flex-col items-center justify-center gap-2 p-3 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-2xl font-bold btn-morph text-xs relative overflow-hidden group">
@@ -331,6 +343,14 @@
                 <i data-lucide="info"></i> <span id="str-btn-info">Lihat Instruksi</span>
             </button>
             
+            <button onclick="checkForUpdate()" id="btn-update-app" class="flex items-center justify-center gap-3 w-full p-4 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-2xl font-bold btn-morph mb-3 group">
+                <i data-lucide="refresh-cw" id="icon-update-app" class="w-5 h-5 transition-transform"></i> 
+                <div class="flex flex-col items-start leading-tight">
+                    <span id="str-btn-update">Cek Pembaruan</span>
+                    <span class="text-[10px] opacity-70 font-mono mt-0.5" id="app-version-display">v2.0.3</span>
+                </div>
+            </button>
+
             <a href="https://saweria.co/Densl" target="_blank" class="flex items-center justify-center gap-2 w-full p-4 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400 rounded-2xl font-bold btn-morph mb-4">
                 <i data-lucide="coffee"></i> <span id="str-btn-donate">Traktir Kopi (Donasi)</span>
             </a>
@@ -339,7 +359,7 @@
         </div>
     </div>
 
-    <!-- Modal Raw Backup (Copy to Clipboard) -->
+    <!-- Modal Raw Backup -->
     <div id="raw-backup-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 opacity-0 transition-opacity">
         <div class="modal-content bg-m3-surface w-full max-w-md rounded-[32px] p-6 transform scale-75 border-none shadow-2xl transition-transform flex flex-col max-h-[80vh]" id="raw-backup-sheet">
             <h3 class="text-xl font-bold mb-2 text-m3-onSurface" id="str-raw-bak-title">Data Backup Mentah</h3>
@@ -352,7 +372,7 @@
         </div>
     </div>
 
-    <!-- Modal Raw Restore (Paste from Clipboard) -->
+    <!-- Modal Raw Restore -->
     <div id="raw-restore-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 opacity-0 transition-opacity">
         <div class="modal-content bg-m3-surface w-full max-w-md rounded-[32px] p-6 transform scale-75 border-none shadow-2xl transition-transform flex flex-col max-h-[80vh]" id="raw-restore-sheet">
             <h3 class="text-xl font-bold mb-2 text-m3-onSurface" id="str-raw-res-title">Pulihkan Data</h3>
@@ -368,12 +388,14 @@
         </div>
     </div>
 
-    <!-- Book Options Modal -->
+    <!-- BOOK OPTIONS MODAL -->
     <div id="b-opt-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[100] flex items-end justify-center opacity-0 p-4 pb-8 transition-opacity">
         <div class="modal-content bg-m3-surface shadow-2xl w-full max-w-sm rounded-[32px] p-6 transform translate-y-full border-none" id="b-opt-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6"></div>
             <h3 id="opt-title" class="text-base font-bold mb-6 text-m3-onSurface text-center truncate px-2">Book Options</h3>
             <div class="flex flex-col gap-3">
+                <button onclick="togglePinBook()" id="btn-opt-pin" class="flex items-center gap-4 w-full p-4 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-2xl font-bold btn-morph"><i data-lucide="pin" id="icon-opt-pin" class="w-5 h-5"></i> <span id="str-opt-pin">Sematkan Buku</span></button>
+                
                 <button onclick="triggerSelectMode()" class="flex items-center gap-4 w-full p-4 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-2xl font-bold btn-morph"><i data-lucide="check-square" class="w-5 h-5"></i> <span id="str-opt-select">Pilih Beberapa</span></button>
                 <button onclick="triggerEditView()" class="flex items-center gap-4 w-full p-4 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-2xl font-bold btn-morph"><i data-lucide="edit-3" class="w-5 h-5"></i> <span id="str-opt-edit">Edit Detail</span></button>
                 <button onclick="triggerDeleteView()" class="flex items-center gap-4 w-full p-4 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 rounded-2xl font-bold btn-morph"><i data-lucide="trash-2" class="w-5 h-5"></i> <span id="str-opt-delete">Hapus Permanen</span></button>
@@ -411,14 +433,15 @@
 
     <!-- Floating Text Selection Menu -->
     <div id="selection-menu" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" class="hidden fixed z-50 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-full px-2 py-1 flex items-center gap-1 border-none pointer-events-auto transition-all opacity-0 scale-75" style="top: -100px; left: 0px;">
-        <button onpointerdown="event.preventDefault(); applyAnnotation('yellow')" class="w-8 h-8 rounded-full bg-[#FDE047] flex items-center justify-center btn-morph"><div class="w-4 h-4 bg-[#EAB308] rounded-full"></div></button>
-        <button onpointerdown="event.preventDefault(); applyAnnotation('green')" class="w-8 h-8 rounded-full bg-[#86EFAC] flex items-center justify-center btn-morph"><div class="w-4 h-4 bg-[#22C55E] rounded-full"></div></button>
-        <button onpointerdown="event.preventDefault(); applyAnnotation('pink')" class="w-8 h-8 rounded-full bg-[#F9A8D4] flex items-center justify-center btn-morph"><div class="w-4 h-4 bg-[#EC4899] rounded-full"></div></button>
         
-        <div class="w-[1px] h-6 bg-m3-onSurfaceVariant/30 mx-1"></div>
-        
-        <button onpointerdown="event.preventDefault(); openNoteInput()" class="p-2 rounded-full hover:bg-m3-surface flex items-center justify-center transition-colors text-m3-onSurfaceVariant btn-morph">
-            <i data-lucide="message-square-plus" class="w-5 h-5"></i>
+        <button onpointerdown="event.preventDefault(); openBookmarkModal('yellow')" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors text-[#EAB308] hover:bg-m3-surface btn-morph">
+            <i data-lucide="bookmark" class="w-5 h-5 fill-current"></i>
+        </button>
+        <button onpointerdown="event.preventDefault(); openBookmarkModal('green')" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors text-[#22C55E] hover:bg-m3-surface btn-morph">
+            <i data-lucide="bookmark" class="w-5 h-5 fill-current"></i>
+        </button>
+        <button onpointerdown="event.preventDefault(); openBookmarkModal('pink')" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors text-[#EC4899] hover:bg-m3-surface btn-morph">
+            <i data-lucide="bookmark" class="w-5 h-5 fill-current"></i>
         </button>
         
         <div class="w-[1px] h-6 bg-m3-onSurfaceVariant/30 mx-1"></div>
@@ -428,23 +451,19 @@
         </button>
     </div>
 
-    <!-- Note Create/Edit Modal -->
-    <div id="note-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
-        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[48px] p-6 transform scale-75 translate-y-12 border-none" id="note-sheet">
-            <h3 id="str-note-title" class="text-lg font-bold mb-4 text-m3-onSurface flex items-center gap-2"><i data-lucide="notebook-pen" class="w-5 h-5"></i> Catatan</h3>
+    <!-- Bookmark Create/Edit Modal -->
+    <div id="bookmark-modal" onclick="if(event.target === this) history.back()" class="hidden modal-overlay fixed inset-0 bg-black/60 z-[120] flex items-center justify-center opacity-0 p-4">
+        <div class="modal-content bg-m3-surface w-full max-w-sm rounded-[48px] p-6 transform scale-75 translate-y-12 border-none" id="bookmark-sheet">
+            <h3 id="str-bookmark-modal-title" class="text-lg font-bold mb-5 text-m3-onSurface flex items-center gap-2"><i data-lucide="bookmark" class="w-5 h-5"></i> Bookmark</h3>
             
-            <div class="flex gap-4 justify-center mb-4">
-                 <button onclick="setNoteColor('yellow')" id="nc-yellow" class="w-8 h-8 rounded-full bg-[#FDE047] ring-2 ring-offset-2 ring-transparent transition-all btn-morph"></button>
-                 <button onclick="setNoteColor('green')" id="nc-green" class="w-8 h-8 rounded-full bg-[#86EFAC] ring-2 ring-offset-2 ring-transparent transition-all btn-morph"></button>
-                 <button onclick="setNoteColor('pink')" id="nc-pink" class="w-8 h-8 rounded-full bg-[#F9A8D4] ring-2 ring-offset-2 ring-transparent transition-all btn-morph"></button>
-            </div>
-
-            <textarea id="note-input-text" class="w-full h-32 bg-m3-surfaceVariant text-m3-onSurfaceVariant p-4 rounded-2xl mb-5 font-bold outline-none border border-transparent focus:border-m3-primary resize-none" placeholder="Tuliskan catatan..."></textarea>
+            <input type="text" id="bookmark-input-title" class="w-full bg-m3-surfaceVariant text-m3-onSurfaceVariant p-4 rounded-t-2xl font-bold outline-none border-b border-m3-surface focus:border-m3-primary text-sm" placeholder="Judul Bookmark...">
+            
+            <textarea id="bookmark-input-text" class="w-full h-28 bg-m3-surfaceVariant text-m3-onSurfaceVariant p-4 rounded-b-2xl mb-5 font-medium outline-none border border-transparent focus:border-m3-primary resize-none text-sm" placeholder="Tulis catatan (opsional)..."></textarea>
             
             <div class="flex gap-2">
-                <button id="btn-delete-note" onclick="deleteNoteInsideModal()" class="py-3 px-5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-bold rounded-full btn-morph flex items-center justify-center hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                <button id="str-note-cancel" onclick="_closeModalAction('note-modal', 'note-sheet', true)" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Batal</button>
-                <button id="str-note-save" onclick="saveNoteAnnotation()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph">Simpan</button>
+                <button id="btn-delete-bookmark" onclick="deleteBookmarkInsideModal()" class="py-3 px-5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-bold rounded-full btn-morph flex items-center justify-center hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                <button id="str-bookmark-cancel" onclick="_closeModalAction('bookmark-modal', 'bookmark-sheet', true)" class="flex-1 py-3 bg-transparent text-m3-onSurface font-bold rounded-full btn-morph">Batal</button>
+                <button id="str-bookmark-save" onclick="saveBookmarkAnnotation()" class="flex-1 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph">Simpan</button>
             </div>
         </div>
     </div>
@@ -492,3 +511,5 @@
 
 </body>
 </html>
+
+
