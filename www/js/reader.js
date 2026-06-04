@@ -1,5 +1,5 @@
-// --- READER ENGINE ---
-// File ini mengurus semua logika berat: Parsing PDF, Ekstrak EPUB, In-Book Search, & Gemini AI.
+// --- READER ENGINE (OPTIMIZED NATIVE STORAGE) ---
+// Mengurus Parsing PDF, Ekstrak EPUB (File System), In-Book Search, & Cache Gemini AI.
 
 if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
@@ -8,7 +8,6 @@ if (typeof pdfjsLib !== 'undefined') {
 // 1. EVENT LISTENER UNTUK UPLOAD BUKU & PENCARIAN
 let inbookSearchTimeout;
 document.addEventListener("DOMContentLoaded", () => {
-    // Listener Upload File (PDF/EPUB)
     const fileInput = document.getElementById('doc-upload');
     if (fileInput) {
         fileInput.addEventListener('change', async (e) => {
@@ -38,7 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Listener Pencarian dalam Buku
     const searchInput = document.getElementById('inbook-search-input');
     if(searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -49,10 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // 2. ENGINE PENCARIAN DALAM BUKU (IN-BOOK SEARCH)
-window.executeSearch = function() {
+window.executeSearch = async function() {
     const query = DOM.searchInput.value.toLowerCase().trim(); 
     DOM.searchRes.innerHTML = '';
-    const d = i18n[wikiLang] || i18n['id'];
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
     
     if(!query) { 
         DOM.searchRes.classList.add('hidden');
@@ -61,8 +59,18 @@ window.executeSearch = function() {
     
     document.querySelectorAll('mark.search-hl').forEach(m => m.outerHTML = m.innerHTML);
 
-    const book = library.find(b => b.id === activeBookId); let results = [];
-    book.nodes.forEach((node, idx) => {
+    const book = library.find(b => b.id === activeBookId); 
+    if(!book) return;
+
+    // Ambil nodes dari memori terpisah (Perubahan Phase 4)
+    let nodesToSearch = window.currentBookNodes || book.nodes;
+    if (!nodesToSearch && book.hasSeparateContent) {
+        nodesToSearch = await localforage.getItem(`book_content_${book.id}`);
+    }
+    if (!nodesToSearch) nodesToSearch = [];
+
+    let results = [];
+    nodesToSearch.forEach((node, idx) => {
         if(node.tag === 'img') return; 
         if(node.text.toLowerCase().includes(query)) {
             let snippet = node.text;
@@ -75,7 +83,7 @@ window.executeSearch = function() {
     });
     
     if(results.length === 0) {
-        DOM.searchRes.innerHTML = `<p class="p-3 text-center opacity-60 text-xs">${d.searchNotFound}</p>`;
+        DOM.searchRes.innerHTML = `<p class="p-3 text-center opacity-60 text-xs">${d.searchNotFound || 'Tidak ditemukan'}</p>`;
     } else {
         results.forEach(res => {
             const btn = document.createElement('button');
@@ -86,8 +94,9 @@ window.executeSearch = function() {
             btn.onclick = () => {
                 const target = document.getElementById(res.id);
                 if(target) {
-                    const nodeIdx = parseInt(res.id.split('-')[1]); const activeBook = library.find(b => b.id === activeBookId);
-                    const nodeText = activeBook.nodes[nodeIdx].text; const currentAnnots = (activeBook.annotations || []).filter(a => a.nodeIdx === nodeIdx);
+                    const nodeIdx = parseInt(res.id.split('-')[1]); 
+                    const nodeText = nodesToSearch[nodeIdx].text; 
+                    const currentAnnots = (book.annotations || []).filter(a => a.nodeIdx === nodeIdx);
                     
                     let hlText = nodeText.replace(regexUI, `|||SRCMARK|||$1|||ENDSRCMARK|||`);
                     let hlHtml = renderNodeText(hlText, currentAnnots);
@@ -110,13 +119,13 @@ window.executeSearch = function() {
     DOM.searchRes.classList.remove('hidden');
 }
 
-// 3. ENGINE AI & DICTIONARY (Kamus Pintar)
+// 3. ENGINE AI & DICTIONARY DENGAN SISTEM CACHE (Menghemat Kuota & Loading)
 window.lookupDictionary = async function() {
     if(currentSelection.nodeIdx === -1) return; 
     const term = currentSelection.text; 
-    hideSelectionMenu(); // Fungsi ini ada di app.js nanti
+    hideSelectionMenu();
     
-    const d = i18n[wikiLang] || i18n['id'];
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
     
     document.getElementById('ai-term').textContent = term;
     document.getElementById('ai-loading').classList.remove('hidden'); 
@@ -128,12 +137,22 @@ window.lookupDictionary = async function() {
     m.classList.remove('hidden'); 
     requestAnimationFrame(() => { m.classList.remove('opacity-0'); s.classList.remove('translate-y-full', 'scale-75'); });
     
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
+    const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+    const cacheKey = `baca_ai_cache_${wikiLang}_${model}_${term.toLowerCase().replace(/\s/g, '_')}`;
+    
+    // Cek Cache Lokal Dulu Biar Sat-Set
+    const cachedResult = localStorage.getItem(cacheKey);
+    if (cachedResult) {
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('ai-content').innerHTML = cachedResult;
+        return;
+    }
+
     try {
         const q = encodeURIComponent(term); let wikiHtml = ''; let dictHtml = ''; let geminiHtml = '';
         const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-        const apiKey = localStorage.getItem('gemini_api_key') || '';
-        const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
         const prompt = wikiLang === 'id' 
                      ? `Jelaskan secara singkat dan jelas mengenai konsep atau definisi "${term}". Maksimal 3 kalimat berfokus pada inti makna.`
                      : `Explain briefly and clearly the concept or definition of "${term}". Max 3 sentences focusing on the core meaning.`;
@@ -217,20 +236,26 @@ window.lookupDictionary = async function() {
             </div>
         `;
 
+        let finalContentHtml = '';
         if(!wikiHtml && !dictHtml && !geminiHtml) {
-            document.getElementById('ai-content').innerHTML = `
+            finalContentHtml = `
                 <div class="flex flex-col items-center justify-center p-4 opacity-50 mb-2">
                     <i data-lucide="ghost" class="w-10 h-10 mb-3"></i>
-                    <p class="text-center font-medium">${d.searchNotFound}</p>
+                    <p class="text-center font-medium">${d.searchNotFound || 'Tidak ditemukan'}</p>
                 </div>
                 ${extLinks}
             `;
         } else {
-            document.getElementById('ai-content').innerHTML = geminiHtml + wikiHtml + dictHtml + extLinks;
+            finalContentHtml = geminiHtml + wikiHtml + dictHtml + extLinks;
+            // Simpan ke LocalStorage Cache biar lain kali instan (Hemat Kuota)
+            try { localStorage.setItem(cacheKey, finalContentHtml); } catch(e){}
         }
+        
+        document.getElementById('ai-content').innerHTML = finalContentHtml;
         if(window.lucide) window.lucide.createIcons();
+
     } catch(e) {
-        document.getElementById('ai-content').innerHTML = `<p class="text-red-500 font-bold">${d.noInternet}</p>`;
+        document.getElementById('ai-content').innerHTML = `<p class="text-red-500 font-bold">${d.noInternet || 'Koneksi error.'}</p>`;
     } finally {
         window.getSelection().removeAllRanges(); 
         document.getElementById('ai-loading').classList.add('hidden');
@@ -246,27 +271,62 @@ window.closeAiModal = function(isFromHistory = false) {
     setTimeout(() => m.classList.add('hidden'), 300);
 };
 
-// 4. ENGINE PDF PARSER
+// --- NATIVE FILE SYSTEM UTILITY ---
+// Menyimpan Base64 ke memori fisik HP biar RAM nggak pecah
+async function saveToCapacitorFS(filename, base64Data) {
+    if (!base64Data || typeof base64Data !== 'string') return base64Data;
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+        try {
+            const fs = window.Capacitor.Plugins.Filesystem;
+            const base64Str = base64Data.split(',')[1];
+            if (!base64Str) return base64Data;
+
+            await fs.writeFile({
+                path: filename,
+                data: base64Str,
+                directory: 'DATA'
+            });
+
+            const stat = await fs.getUri({
+                directory: 'DATA',
+                path: filename
+            });
+            // Convert path lokal Android jadi URL Web yang bisa dibaca HTML tag img
+            return window.Capacitor.convertFileSrc(stat.uri);
+        } catch (e) {
+            console.error("FS Save error, falling back:", e);
+            return base64Data; 
+        }
+    }
+    return base64Data; 
+}
+
+
+// 4. ENGINE PDF PARSER (Optimized)
 async function handlePdf(file, bookTitle) {
-    const d = i18n[wikiLang] || i18n['id'];
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
     DOM.loadTxt.textContent = "Opening PDF...";
     const arrayBuffer = await file.arrayBuffer(); 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; 
     const numPages = pdf.numPages;
+    const bookId = Date.now().toString(); // Bikin ID di awal
     
     if(numPages === 0) throw new Error("Document is empty.");
     
     let allItems = []; let coverBase64 = null;
     
     try {
-        DOM.loadTxt.textContent = d.extractingCover;
+        DOM.loadTxt.textContent = d.extractingCover || "Ekstrak Sampul...";
         const page1 = await pdf.getPage(1); 
         const viewport = page1.getViewport({ scale: 0.8 });
         const canvas = document.createElement('canvas'); 
         const ctx = canvas.getContext('2d');
         canvas.height = viewport.height; canvas.width = viewport.width;
         await page1.render({ canvasContext: ctx, viewport: viewport }).promise; 
-        coverBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        
+        // Simpan langsung ke fisik memori (Bukan Base64 Raksasa)
+        const rawBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        coverBase64 = await saveToCapacitorFS(`cover_${bookId}.jpeg`, rawBase64);
     } catch(e) {}
 
     for (let i = 1; i <= numPages; i++) {
@@ -275,7 +335,7 @@ async function handlePdf(file, bookTitle) {
         
         DOM.loadBar.style.width = `${pct}%`; 
         DOM.loadPct.textContent = `${pct}%`; 
-        DOM.loadTxt.textContent = `${d.readingPage} ${i}`;
+        DOM.loadTxt.textContent = `${d.readingPage || 'Membaca'} ${i}`;
 
         const page = await pdf.getPage(i); 
         const viewport = page.getViewport({ scale: 1.0 }); 
@@ -291,7 +351,7 @@ async function handlePdf(file, bookTitle) {
         });
     }
     
-    DOM.loadTxt.textContent = d.formattingText; 
+    DOM.loadTxt.textContent = d.formattingText || "Format Teks..."; 
     await new Promise(r => setTimeout(r, 50));
     if(allItems.length === 0) throw new Error("This PDF only contains images.");
 
@@ -334,17 +394,27 @@ async function handlePdf(file, bookTitle) {
         cleanedNodes.push(curr);
     });
     
-    library.push({ id: Date.now().toString(), type: 'pdf', title: bookTitle, nodes: cleanedNodes, pages: numPages, progressPct: 0, lastReadId: null, coverBase64: coverBase64, shape: 'square' });
+    // Simpan teks mentah (nodes) terpisah dari Metadata Induk
+    await localforage.setItem(`book_content_${bookId}`, cleanedNodes);
+
+    library.push({ 
+        id: bookId, type: 'pdf', title: bookTitle, 
+        hasSeparateContent: true, // Penanda kalau nodes disimpen terpisah
+        pages: numPages, progressPct: 0, lastReadId: null, 
+        coverBase64: coverBase64, shape: 'square' 
+    });
+    
     await localforage.setItem('pdf_epub_master', library); 
     renderLibrary();
 }
 
-// 5. ENGINE EPUB PARSER (XML & JSZip)
+// 5. ENGINE EPUB PARSER (Optimized)
 async function handleEpub(file, bookTitle) {
-    const d = i18n[wikiLang] || i18n['id'];
-    DOM.loadTxt.textContent = d.extractingEpub; 
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
+    DOM.loadTxt.textContent = d.extractingEpub || "Ekstrak EPUB..."; 
     DOM.loadBar.style.width = '10%'; 
     DOM.loadPct.textContent = '10%';
+    const bookId = Date.now().toString(); // ID Unik
     
     const zip = await JSZip.loadAsync(file);
     const containerData = await zip.file("META-INF/container.xml").async("string");
@@ -355,7 +425,7 @@ async function handleEpub(file, bookTitle) {
     const opfPath = rootfile.getAttribute("full-path"); 
     const basePath = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
 
-    DOM.loadTxt.textContent = d.analyzingStruct;
+    DOM.loadTxt.textContent = d.analyzingStruct || "Analisa Struktur...";
     const opfData = await zip.file(opfPath).async("string"); 
     const opfDom = new DOMParser().parseFromString(opfData, "text/xml");
     const manifest = {}; 
@@ -369,8 +439,9 @@ async function handleEpub(file, bookTitle) {
         const coverPath = basePath + manifest[coverMeta.getAttribute("content")]; 
         const coverFile = zip.file(coverPath);
         if (coverFile) { 
-            const base64Str = await coverFile.async("base64"); 
-            coverBase64 = "data:image/jpeg;base64," + base64Str; 
+            const b64 = await coverFile.async("base64"); 
+            // Save ke memori fisik, bukan memory RAM
+            coverBase64 = await saveToCapacitorFS(`cover_${bookId}.jpeg`, "data:image/jpeg;base64," + b64);
         }
     }
 
@@ -379,7 +450,7 @@ async function handleEpub(file, bookTitle) {
         const pct = Math.round(((i+1) / spine.length) * 80) + 20;
         DOM.loadBar.style.width = `${pct}%`; 
         DOM.loadPct.textContent = `${pct}%`; 
-        DOM.loadTxt.textContent = `${d.extractingChapter} ${i+1}/${spine.length}`;
+        DOM.loadTxt.textContent = `${d.extractingChapter || 'Bab'} ${i+1}/${spine.length}`;
         await new Promise(r => setTimeout(r, 0));
 
         const htmlPath = basePath + spine[i]; 
@@ -397,7 +468,10 @@ async function handleEpub(file, bookTitle) {
                     const imgFile = zip.file(absPath);
                     if (imgFile) { 
                         const b64 = await imgFile.async("base64"); 
-                        parsedNodes.push({ tag: 'img', src: "data:image/jpeg;base64," + b64 }); 
+                        const imgName = `img_${bookId}_${Math.random().toString(36).substring(7)}.jpeg`;
+                        // Gambar isi buku juga disimpen fisik biar EPUB ga lag
+                        const finalFsUrl = await saveToCapacitorFS(imgName, "data:image/jpeg;base64," + b64);
+                        parsedNodes.push({ tag: 'img', src: finalFsUrl }); 
                     }
                 }
             } else {
@@ -411,7 +485,16 @@ async function handleEpub(file, bookTitle) {
         }
     }
     
-    library.push({ id: Date.now().toString(), type: 'epub', title: bookTitle, nodes: parsedNodes, pages: spine.length, progressPct: 0, lastReadId: null, coverBase64: coverBase64, shape: 'square' });
+    // Teks mentah dipisah ke LocalForage
+    await localforage.setItem(`book_content_${bookId}`, parsedNodes);
+
+    library.push({ 
+        id: bookId, type: 'epub', title: bookTitle, 
+        hasSeparateContent: true, // Penanda buat app.js
+        pages: spine.length, progressPct: 0, lastReadId: null, 
+        coverBase64: coverBase64, shape: 'square' 
+    });
+    
     await localforage.setItem('pdf_epub_master', library); 
     renderLibrary();
 }
@@ -426,3 +509,4 @@ function resolveRelativePath(base, relative) {
     }
     return stack.join('/');
 }
+
