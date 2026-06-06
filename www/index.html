@@ -10,15 +10,16 @@
     <meta name="theme-color" content="#1C1B1E">
     <title>Baca.</title>
     
-    <!-- Konfigurasi Statis (Tailwind, Palet, i18n) — HARUS sebelum tailwindcss.js -->
-    <script src="js/config.js"></script>
-
     <!-- External Libs -->
     <script src="libs/tailwindcss.js"></script>
     <script src="libs/pdf.min.js"></script>
     <script src="libs/localforage.min.js"></script>
     <script src="libs/jszip.min.js"></script>
     <script src="libs/lucide.js"></script>
+    <script src="libs/marked.min.js"></script>
+
+    <!-- Konfigurasi Statis (Tailwind, Palet, i18n) -->
+    <script src="js/config.js"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -283,7 +284,7 @@
                     <div class="bg-m3-surfaceVariant p-5 rounded-3xl pb-6">
                         <i data-lucide="file-warning" class="text-m3-primary mb-3 w-6 h-6"></i>
                         <h3 id="str-wel-format" class="font-bold mb-1 text-sm">Batasan Format</h3>
-                        <p id="str-wel-format-desc" class="text-xs opacity-80 leading-relaxed font-medium"><b>PDF:</b> Hanya teks. Gambar diabaikan.<br><b>EPUB:</b> Didukung penuh.</p>
+                        <p id="str-wel-format-desc" class="text-xs opacity-80 leading-relaxed font-medium"><b>PDF:</b> Hanya teks. Gambar diabaikan.<br><b>EPUB:</b> Didukung penuh.<br><b>TXT & MD:</b> Didukung penuh.</p>
                     </div>
                     <div class="bg-m3-surfaceVariant p-5 rounded-3xl pb-6">
                         <i data-lucide="shield-check" class="text-m3-primary mb-3 w-6 h-6"></i>
@@ -576,9 +577,10 @@
     </div>
 
     <!-- Engine & App Logic Scripts -->
-    <script src="libs/marked.min.js"></script>
     <script src="js/reader.js"></script>
     <script src="js/app.js"></script>
 
 </body>
 </html>
+
+```
