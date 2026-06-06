@@ -102,4 +102,61 @@ mark.search-hl { background-color: var(--md-sys-color-primary) !important; color
 .reader-dynamic-text h2 { font-family: var(--reader-font) !important; font-size: calc(var(--reader-size) * 1.4) !important; text-align: left !important; line-height: 1.4 !important; font-weight: bold; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--md-sys-color-on-surface-variant); border-bottom: 1px solid var(--md-sys-color-surface-variant); padding-bottom: 0.5rem; opacity: 1; }
 ::-webkit-scrollbar { width: 0px; }
 
+/* ── MARKDOWN CONTENT STYLING ── */
+/* Blockquote: tampil sebagai kutipan dengan border kiri */
+.reader-dynamic-text blockquote,
+.reader-dynamic-text p.md-blockquote {
+    border-left: 3px solid var(--md-sys-color-primary);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    opacity: 0.75;
+    font-style: italic;
+}
 
+/* Inline code */
+.reader-dynamic-text code {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.85em !important;
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: 0.1em 0.4em;
+    border-radius: 6px;
+}
+
+/* Code block / pre */
+.reader-dynamic-text pre {
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.8em !important;
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: 1rem;
+    border-radius: 16px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 1rem 0;
+    line-height: 1.6 !important;
+    text-align: left !important;
+}
+
+/* Horizontal rule / separator — ditampilkan sebagai p dengan teks "—" */
+.reader-dynamic-text p.md-separator {
+    text-align: center !important;
+    opacity: 0.3;
+    font-size: 1.2em !important;
+    letter-spacing: 0.5em;
+    margin: 1.5rem 0;
+}
+
+/* List items (ul/ol dari md yang masuk sebagai p) */
+.reader-dynamic-text p.md-listitem {
+    padding-left: 1.2rem;
+    position: relative;
+}
+.reader-dynamic-text p.md-listitem::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--md-sys-color-primary);
+    font-weight: bold;
+}
