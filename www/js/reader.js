@@ -8,42 +8,28 @@ if (typeof pdfjsLib !== 'undefined') {
 // 1. EVENT LISTENER UNTUK UPLOAD BUKU & PENCARIAN
 let inbookSearchTimeout;
 document.addEventListener("DOMContentLoaded", () => {
-    // Listener Upload File (PDF/EPUB/TXT/MD) — Multi-file batch queue
+    // Listener Upload File (PDF/EPUB/TXT/MD) - Support Multiple Files
     const fileInput = document.getElementById('doc-upload');
     if (fileInput) {
         fileInput.addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);
-            if (!files.length) return;
-
-            const lang = typeof wikiLang !== 'undefined' ? wikiLang : 'id';
-            const d = (typeof i18n !== 'undefined' ? (i18n[lang] || i18n['id']) : {});
-
+            if (files.length === 0) return;
+            
+            const totalFiles = files.length;
+            const d = i18n[wikiLang] || i18n['en'];
+            
             DOM.load.classList.remove('hidden');
-            DOM.loadBar.style.width = '0%';
-            DOM.loadPct.textContent = '0%';
-
-            let successCount = 0;
-            let failCount = 0;
-
-            for (let i = 0; i < files.length; i++) {
+            
+            for (let i = 0; i < totalFiles; i++) {
                 const file = files[i];
-                const originalFilename = file.name;
-                const ext = originalFilename.split('.').pop().toLowerCase();
+                const originalFilename = file.name; 
+                const ext = originalFilename.split('.').pop().toLowerCase(); 
                 const bookTitle = originalFilename.replace(/\.[^/.]+$/, "");
-
-                // Update teks loading per file kalau lebih dari 1
-                if (files.length > 1) {
-                    const progressLabel = lang === 'id'
-                        ? `Membaca file ${i + 1} dari ${files.length}...`
-                        : lang === 'es'
-                        ? `Leyendo archivo ${i + 1} de ${files.length}...`
-                        : `Reading file ${i + 1} of ${files.length}...`;
-                    DOM.loadTxt.textContent = progressLabel;
-                } else {
-                    DOM.loadTxt.textContent = d.loadingDocs || 'Reading Document...';
-                }
-
-                DOM.loadBar.style.width = '0%';
+                
+                // Update UI Loading text dengan info multi-file jika lebih dari 1
+                const progressText = totalFiles > 1 ? `${d.loadingDocs} (${i + 1}/${totalFiles})...` : d.loadingDocs;
+                DOM.loadTxt.textContent = progressText;
+                DOM.loadBar.style.width = '0%'; 
                 DOM.loadPct.textContent = '0%';
 
                 try {
@@ -51,579 +37,472 @@ document.addEventListener("DOMContentLoaded", () => {
                     else if (ext === 'epub') await handleEpub(file, bookTitle);
                     else if (ext === 'txt') await handleTxt(file, bookTitle);
                     else if (ext === 'md') await handleMd(file, bookTitle);
-                    else throw new Error(
-                        lang === 'id' ? `Format .${ext} tidak didukung.`
-                        : lang === 'es' ? `Formato .${ext} no soportado.`
-                        : `Format .${ext} is not supported.`
-                    );
-                    successCount++;
-                } catch (err) {
-                    failCount++;
-                    console.error(`Gagal proses file: ${originalFilename}`, err);
-                    // Kalau multi-file, jangan stop — tampilkan error per file lalu lanjut
-                    if (files.length > 1) {
-                        const errTitle = lang === 'es' ? `Error: ${originalFilename}` : `Gagal: ${originalFilename}`;
-                        showDialog(errTitle, err.message, "alert-triangle", [{ text: lang === 'es' ? "Continuar" : "Lanjut", primary: true }]);
-                        // Tunggu user dismiss dialog sebelum lanjut ke file berikutnya
-                        await new Promise(resolve => {
-                            const orig = window.closeDialog;
-                            window.closeDialog = function(fromHistory = false) {
-                                window.closeDialog = orig;
-                                orig(fromHistory);
-                                resolve();
-                            };
-                        });
-                    } else {
-                        showDialog(
-                            lang === 'es' ? "Error al Abrir" : "Gagal Buka Buku",
-                            err.message, "alert-triangle",
-                            [{ text: lang === 'es' ? "Cerrar" : "Tutup", primary: true }]
-                        );
-                    }
+                    else throw new Error("Format tidak didukung. Gunakan PDF, EPUB, TXT, atau MD.");
+                } catch (err) { 
+                    showDialog("Gagal Buka Buku", `${bookTitle} - ${err.message}`, "alert-triangle", [{text: "Tutup", primary: true}]);
+                    console.error(err); 
                 }
             }
-
-            setTimeout(() => { DOM.load.classList.add('hidden'); }, 800);
-
-            // Kalau multi-file, tampilkan ringkasan setelah semua selesai
-            if (files.length > 1 && failCount === 0) {
-                const lang2 = typeof wikiLang !== 'undefined' ? wikiLang : 'id';
-                const msg = lang2 === 'id'
-                    ? `${successCount} buku berhasil ditambahkan ke perpustakaan.`
-                    : lang2 === 'es'
-                    ? `${successCount} libros añadidos a la biblioteca.`
-                    : `${successCount} books added to your library.`;
-                setTimeout(() => {
-                    showDialog(
-                        lang2 === 'id' ? "Selesai!" : lang2 === 'es' ? "¡Listo!" : "Done!",
-                        msg, "check-circle",
-                        [{ text: "Oke", primary: true }]
-                    );
-                }, 900);
-            }
-
-            e.target.value = '';
+            
+            // Cleanup setelah semua file selesai
+            setTimeout(() => { 
+                DOM.load.classList.add('hidden'); 
+                e.target.value = ''; 
+            }, 500);
+            
+            await loadLibrary(); 
+            renderLibrary();
         });
     }
 
-    // Listener Pencarian dalam Buku
-    // Pakai getElementById langsung buat hindari race condition dengan app.js
-    const searchInputEl = document.getElementById('inbook-search-input');
-    const searchResEl = document.getElementById('search-results-panel');
-
-    if(searchInputEl) {
-        searchInputEl.addEventListener('input', (e) => {
-            clearTimeout(inbookSearchTimeout);
-            const val = e.target.value.trim().toLowerCase();
-            if (!val || val.length < 2) { 
-                if(searchResEl) searchResEl.classList.add('hidden'); 
-                clearSearchHighlights();
-                return; 
+    // Modal AI Close Event
+    const modalAiOverlay = document.getElementById('ai-modal');
+    if(modalAiOverlay) {
+        modalAiOverlay.addEventListener('click', (e) => {
+            if(e.target === modalAiOverlay) {
+                closeAiModal();
             }
-            
-            inbookSearchTimeout = setTimeout(() => {
-                const lib = typeof library !== 'undefined' ? library : [];
-                const currentBookId = typeof activeBookId !== 'undefined' ? activeBookId : null;
-                const book = lib.find(b => b.id === currentBookId);
-                if (!book || !book.nodes) return;
-                
-                const results = [];
-                const regex = new RegExp(`(${val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                
-                book.nodes.forEach((node, i) => {
-                    if (node.tag !== 'img' && node.text && node.text.toLowerCase().includes(val)) {
-                        let snippet = node.text;
-                        const matchIdx = snippet.toLowerCase().indexOf(val);
-                        let start = Math.max(0, matchIdx - 40);
-                        let end = Math.min(snippet.length, matchIdx + val.length + 40);
-                        let preview = snippet.substring(start, end);
-                        if(start > 0) preview = "..." + preview;
-                        if(end < snippet.length) preview = preview + "...";
-                        
-                        preview = preview.replace(regex, '<mark class="bg-m3-primary text-m3-onPrimary rounded px-0.5">$1</mark>');
-                        
-                        let contextStr = "Chapter / Section";
-                        for(let j=i; j>=0; j--){
-                            if(book.nodes[j].tag === 'h1' || book.nodes[j].tag === 'h2') {
-                                contextStr = book.nodes[j].text.length > 25 ? book.nodes[j].text.substring(0,25)+'...' : book.nodes[j].text;
-                                break;
-                            }
-                        }
-                        
-                        results.push({ nodeIdx: i, preview: preview, context: contextStr });
-                    }
-                });
-
-                renderSearchResults(results, val);
-            }, 400);
         });
     }
 });
 
-function clearSearchHighlights() {
-    if(!DOM.inner) return;
-    const marks = DOM.inner.querySelectorAll('mark.search-hl');
-    marks.forEach(m => {
-        const parent = m.parentNode;
-        parent.replaceChild(document.createTextNode(m.textContent), m);
-        parent.normalize();
-    });
-}
+// 2. PARSER TXT
+async function handleTxt(file, title) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const d = i18n[wikiLang] || i18n['en'];
+        DOM.loadTxt.textContent = d.formattingText;
 
-function renderSearchResults(results, keyword) {
-    const searchResEl = document.getElementById('search-results-panel');
-    const readContentEl = document.getElementById('reader-content');
-    if(!searchResEl) return;
-    searchResEl.innerHTML = '';
-    const lang = typeof wikiLang !== 'undefined' ? wikiLang : 'id';
-    const d = (typeof i18n !== 'undefined' ? (i18n[lang] || i18n['id']) : {});
-    
-    if(results.length === 0) {
-        searchResEl.innerHTML = `<div class="p-6 text-center text-sm opacity-60 font-medium">${d.searchNotFound || 'Tidak ditemukan'}</div>`;
-        searchResEl.classList.remove('hidden');
-        return;
-    }
-    
-    const countHeader = document.createElement('div');
-    countHeader.className = "px-4 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-m3-primary/80 border-b border-m3-surfaceVariant";
-    countHeader.textContent = `${results.length} Found`;
-    searchResEl.appendChild(countHeader);
+        reader.onload = async (e) => {
+            try {
+                const text = e.target.result;
+                // Pecah berdasarkan newline, bersihin baris kosong
+                const paragraphs = text.split(/\r?\n/).filter(p => p.trim() !== '');
+                const nodes = [];
+                
+                for (let i = 0; i < paragraphs.length; i++) {
+                    const progress = Math.round((i / paragraphs.length) * 100);
+                    DOM.loadBar.style.width = `${progress}%`;
+                    DOM.loadPct.textContent = `${progress}%`;
 
-    results.forEach(res => {
-        const item = document.createElement('div');
-        item.className = "p-4 border-b border-m3-surfaceVariant hover:bg-m3-surface transition-colors cursor-pointer";
-        item.innerHTML = `
-            <div class="text-[10px] font-bold text-m3-primary mb-1 uppercase tracking-widest">${res.context}</div>
-            <div class="text-sm text-m3-onSurface leading-relaxed line-clamp-3">${res.preview}</div>
-        `;
-        
-        item.onclick = () => {
-            const lib = typeof library !== 'undefined' ? library : [];
-            const currentBookId = typeof activeBookId !== 'undefined' ? activeBookId : null;
-            const book = lib.find(b => b.id === currentBookId);
-            if(!book) return;
-            
-            searchResEl.classList.add('hidden');
-            const targetEl = document.getElementById(`node-${res.nodeIdx}`);
-            const container = readContentEl;
-            
-            if(targetEl && container) {
-                clearSearchHighlights();
-                
-                const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                
-                const walker = document.createTreeWalker(targetEl, NodeFilter.SHOW_TEXT, null, false);
-                const textNodes = [];
-                let n;
-                while(n = walker.nextNode()) textNodes.push(n);
-                
-                textNodes.forEach(node => {
-                    const text = node.nodeValue;
-                    if(regex.test(text)) {
-                        const span = document.createElement('span');
-                        span.innerHTML = text.replace(regex, '<mark class="search-hl transition-colors duration-1000">$1</mark>');
-                        node.parentNode.replaceChild(span, node);
+                    // Simple heurisitic for Chapters (All caps or starts with Chapter/Bab)
+                    const pText = paragraphs[i].trim();
+                    let isToc = false;
+                    let depth = 1;
+                    
+                    if (pText.length < 50 && (pText === pText.toUpperCase() || /^(chapter|bab|bagian)\s/i.test(pText))) {
+                        isToc = true;
+                        nodes.push({ text: pText, html: `<h1 class="text-3xl font-bold mb-4 mt-8">${pText}</h1>`, isToc, depth });
+                    } else {
+                        nodes.push({ text: pText, html: `<p class="mb-4">${pText}</p>`, isToc: false });
                     }
-                });
+                    
+                    if (i % 500 === 0) await new Promise(r => setTimeout(r, 0));
+                }
 
-                const cRect = container.getBoundingClientRect();
-                const tRect = targetEl.getBoundingClientRect();
-                const offset = tRect.top - cRect.top + container.scrollTop - (cRect.height / 2) + (tRect.height / 2);
-                
-                container.scrollTo({ top: offset, behavior: 'smooth' });
-                
-                setTimeout(() => {
-                    const marks = targetEl.querySelectorAll('mark.search-hl');
-                    marks.forEach(m => {
-                        m.style.backgroundColor = 'transparent';
-                        m.style.color = 'inherit';
-                    });
-                    setTimeout(() => clearSearchHighlights(), 1500);
-                }, 2000);
+                if (nodes.length === 0) throw new Error("File TXT kosong.");
+
+                const book = {
+                    id: 'book_' + Date.now() + Math.random().toString(16).slice(2),
+                    title: title, cover: null,
+                    progress: 0, lastReadNode: 0, lastRead: Date.now(),
+                    nodes: nodes,
+                    bookmarks: []
+                };
+
+                await localforage.setItem(book.id, book);
+                resolve();
+            } catch (err) {
+                reject(err);
             }
         };
-        
-        searchResEl.appendChild(item);
+        reader.onerror = () => reject(new Error("Gagal membaca file TXT."));
+        reader.readAsText(file);
     });
-    searchResEl.classList.remove('hidden');
 }
 
-// 2. FUNGSI EKSTRAK PDF
-async function handlePdf(file, bookTitle) {
-    const arrayBuffer = await file.arrayBuffer(); 
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let parsedNodes = []; 
-    const total = pdf.numPages;
+// 3. PARSER MARKDOWN (.md)
+async function handleMd(file, title) {
+    return new Promise((resolve, reject) => {
+        if (typeof marked === 'undefined') return reject(new Error("Library Marked.js tidak ditemukan."));
+        
+        const reader = new FileReader();
+        const d = i18n[wikiLang] || i18n['en'];
+        DOM.loadTxt.textContent = d.formattingText;
 
-    const coverCanvas = document.createElement('canvas'); const coverCtx = coverCanvas.getContext('2d');
-    const firstPage = await pdf.getPage(1); const viewport = firstPage.getViewport({ scale: 0.5 });
-    coverCanvas.width = viewport.width; coverCanvas.height = viewport.height;
-    await firstPage.render({ canvasContext: coverCtx, viewport: viewport }).promise;
-    const coverBase64 = coverCanvas.toDataURL('image/jpeg', 0.8);
+        reader.onload = async (e) => {
+            try {
+                const text = e.target.result;
+                // Konversi MD ke HTML pakai marked
+                const rawHtml = marked.parse(text);
+                
+                // Bikin dummy container buat mem-parse HTML string
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = rawHtml;
+                
+                const nodes = [];
+                const childNodes = Array.from(tempDiv.children);
+                
+                for (let i = 0; i < childNodes.length; i++) {
+                    const el = childNodes[i];
+                    const progress = Math.round((i / childNodes.length) * 100);
+                    DOM.loadBar.style.width = `${progress}%`;
+                    DOM.loadPct.textContent = `${progress}%`;
 
-    for (let i = 1; i <= total; i++) {
-        DOM.loadBar.style.width = `${Math.round((i / total) * 100)}%`; 
-        DOM.loadPct.textContent = `${Math.round((i / total) * 100)}%`;
+                    const elText = el.textContent.trim();
+                    if (!elText && el.tagName !== 'IMG' && el.tagName !== 'HR') continue;
 
-        const page = await pdf.getPage(i); 
+                    let isToc = false;
+                    let depth = 1;
+                    let outHtml = el.outerHTML;
+
+                    // Handle Heading buat Daftar Isi
+                    if (/^H[1-6]$/.test(el.tagName)) {
+                        isToc = true;
+                        depth = parseInt(el.tagName.substring(1));
+                        // Stylize heading sesuai level
+                        if (depth === 1) outHtml = `<h1 class="text-3xl font-bold mb-4 mt-8">${el.innerHTML}</h1>`;
+                        else if (depth === 2) outHtml = `<h2 class="text-2xl font-bold mb-3 mt-6">${el.innerHTML}</h2>`;
+                        else outHtml = `<h3 class="text-xl font-bold mb-2 mt-4">${el.innerHTML}</h3>`;
+                    } 
+                    // Handle list
+                    else if (el.tagName === 'UL' || el.tagName === 'OL') {
+                        const listClass = el.tagName === 'UL' ? 'list-disc pl-5 mb-4 space-y-1' : 'list-decimal pl-5 mb-4 space-y-1';
+                        outHtml = `<${el.tagName.toLowerCase()} class="${listClass}">${el.innerHTML}</${el.tagName.toLowerCase()}>`;
+                    }
+                    // Handle Blockquote
+                    else if (el.tagName === 'BLOCKQUOTE') {
+                        outHtml = `<blockquote class="border-l-4 border-m3-primary pl-4 py-1 italic opacity-80 mb-4 bg-m3-surfaceVariant rounded-r-lg">${el.innerHTML}</blockquote>`;
+                    }
+                    // Handle standard paragraph
+                    else if (el.tagName === 'P') {
+                        outHtml = `<p class="mb-4">${el.innerHTML}</p>`;
+                    }
+
+                    nodes.push({ text: elText, html: outHtml, isToc, depth });
+                    
+                    if (i % 100 === 0) await new Promise(r => setTimeout(r, 0));
+                }
+
+                if (nodes.length === 0) throw new Error("File MD kosong atau format salah.");
+
+                const book = {
+                    id: 'book_' + Date.now() + Math.random().toString(16).slice(2),
+                    title: title, cover: null,
+                    progress: 0, lastReadNode: 0, lastRead: Date.now(),
+                    nodes: nodes,
+                    bookmarks: []
+                };
+
+                await localforage.setItem(book.id, book);
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => reject(new Error("Gagal membaca file MD."));
+        reader.readAsText(file);
+    });
+}
+
+
+// 4. PARSER PDF
+async function handlePdf(file, title) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    const numPages = pdf.numPages;
+    let cover = null;
+    const nodes = [];
+    const d = i18n[wikiLang] || i18n['en'];
+
+    for (let i = 1; i <= numPages; i++) {
+        const pct = Math.round((i / numPages) * 100);
+        DOM.loadBar.style.width = `${pct}%`;
+        DOM.loadPct.textContent = `${pct}%`;
+
+        const page = await pdf.getPage(i);
+
+        if (i === 1) {
+            DOM.loadTxt.textContent = d.extractingCover;
+            const viewport = page.getViewport({scale: 1});
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.render({canvasContext: ctx, viewport: viewport}).promise;
+            cover = canvas.toDataURL('image/jpeg', 0.5);
+        }
+
+        DOM.loadTxt.textContent = `${d.readingPage} ${i} / ${numPages}...`;
         const textContent = await page.getTextContent();
-        let currentBlock = ""; 
-        let lastY = -1; 
-        let isTitle = false;
+        let pageText = '';
+        let lastY = -1;
 
         textContent.items.forEach(item => {
-            const y = Math.round(item.transform[5]); 
-            const height = item.height;
-            if (lastY !== -1 && Math.abs(y - lastY) > height * 1.5) {
-                if (currentBlock.trim().length > 0) { // Biarin 1 huruf lewat (Drop Cap awal bab)
-                    let cleanText = currentBlock.trim().replace(/\s+/g, ' ');
-                    parsedNodes.push({ tag: isTitle ? 'h2' : 'p', text: cleanText });
-                }
-                currentBlock = ""; 
-                isTitle = false;
-            }
-            if (height > 18) isTitle = true;
-            currentBlock += item.str + " "; 
-            lastY = y;
+            if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) pageText += '\n';
+            pageText += item.str;
+            lastY = item.transform[5];
         });
 
-        if (currentBlock.trim().length > 0) { 
-            let cleanText = currentBlock.trim().replace(/\s+/g, ' ');
-            parsedNodes.push({ tag: isTitle ? 'h2' : 'p', text: cleanText }); 
+        const rawParagraphs = pageText.split('\n');
+        let currentP = '';
+        
+        DOM.loadTxt.textContent = d.formattingText;
+        for (let p of rawParagraphs) {
+            const clean = p.trim();
+            if (!clean) {
+                if (currentP) {
+                    let isToc = currentP.length < 100 && (currentP === currentP.toUpperCase() || /^([IVXLCDM\d]+(\.|\s)|Bab\s|Chapter\s)/i.test(currentP));
+                    nodes.push({ text: currentP, html: `<p>${currentP}</p>`, isToc, depth: 1 });
+                    currentP = '';
+                }
+            } else {
+                currentP += (currentP ? ' ' : '') + clean;
+            }
+        }
+        if (currentP) {
+            let isToc = currentP.length < 100 && (currentP === currentP.toUpperCase() || /^([IVXLCDM\d]+(\.|\s)|Bab\s|Chapter\s)/i.test(currentP));
+            nodes.push({ text: currentP, html: `<p>${currentP}</p>`, isToc, depth: 1 });
         }
     }
-    
-    library.push({ id: Date.now().toString(), type: 'pdf', title: bookTitle, nodes: parsedNodes, pages: total, progressPct: 0, lastReadId: null, coverBase64: coverBase64, shape: 'square' });
-    await localforage.setItem('pdf_epub_master', library); 
-    renderLibrary();
+
+    if (nodes.length === 0) throw new Error("Gagal ekstrak teks dari PDF ini.");
+
+    const book = {
+        id: 'book_' + Date.now(),
+        title: title, cover: cover,
+        progress: 0, lastReadNode: 0, lastRead: Date.now(),
+        nodes: nodes,
+        bookmarks: [] // Inisialisasi properti bookmark untuk fitur Highlight
+    };
+
+    await localforage.setItem(book.id, book);
 }
 
-// 3. FUNGSI EKSTRAK EPUB (REVISI ALGORITMA: ANTI-LAG & ANTI-DUPLIKAT MURNI)
-async function handleEpub(file, bookTitle) {
-    const zip = await JSZip.loadAsync(file); 
-    let parsedNodes = []; 
-    let coverBase64 = null;
+// 5. PARSER EPUB
+async function handleEpub(file, title) {
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const d = i18n[wikiLang] || i18n['en'];
 
-    const containerXml = await zip.file("META-INF/container.xml").async("text");
-    const opfPath = (new DOMParser()).parseFromString(containerXml, "text/xml").getElementsByTagName("rootfile")[0].getAttribute("full-path");
-    const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : "";
-    const opfXml = await zip.file(opfPath).async("text");
-    const opfDoc = (new DOMParser()).parseFromString(opfXml, "text/xml");
+    DOM.loadTxt.textContent = d.extractingEpub;
+    DOM.loadBar.style.width = '10%'; DOM.loadPct.textContent = '10%';
 
-    const titleEl = opfDoc.getElementsByTagName("dc:title")[0]; 
-    if (titleEl && titleEl.textContent) bookTitle = titleEl.textContent;
+    let containerFile = zip.file("META-INF/container.xml");
+    if (!containerFile) throw new Error("Format EPUB tidak valid (container.xml hilang).");
+    const containerXml = await containerFile.async("string");
+    const containerDom = new DOMParser().parseFromString(containerXml, "text/xml");
+    const opfPath = containerDom.querySelector("rootfile").getAttribute("full-path");
+
+    const opfFile = zip.file(opfPath);
+    if (!opfFile) throw new Error("OPF file hilang.");
+    const opfXml = await opfFile.async("string");
+    const opfDom = new DOMParser().parseFromString(opfXml, "text/xml");
+    const basePath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+
+    DOM.loadTxt.textContent = d.analyzingStructure;
+    DOM.loadBar.style.width = '20%'; DOM.loadPct.textContent = '20%';
 
     const manifest = {};
-    Array.from(opfDoc.getElementsByTagName("item")).forEach(item => { 
-        manifest[item.getAttribute("id")] = { href: item.getAttribute("href"), mediaType: item.getAttribute("media-type") }; 
+    opfDom.querySelectorAll("manifest > item").forEach(item => {
+        manifest[item.getAttribute("id")] = item.getAttribute("href");
     });
 
-    const metaCover = opfDoc.querySelector("meta[name='cover']");
-    if (metaCover) {
-        const coverId = metaCover.getAttribute("content");
+    let cover = null;
+    const coverMeta = opfDom.querySelector("meta[name='cover']");
+    if (coverMeta) {
+        const coverId = coverMeta.getAttribute("content");
         if (manifest[coverId]) {
-            let coverPath = opfDir + manifest[coverId].href;
-            const coverFile = zip.file(coverPath);
+            const coverFile = zip.file(basePath + manifest[coverId]);
             if (coverFile) {
-                const b64 = await coverFile.async("base64");
-                coverBase64 = "data:" + manifest[coverId].mediaType + ";base64," + b64;
+                const coverBlob = await coverFile.async("blob");
+                cover = await new Promise(res => { const r = new FileReader(); r.onload=e=>res(e.target.result); r.readAsDataURL(coverBlob); });
             }
         }
     }
 
-    if (!coverBase64) {
-        const potentialCover = Object.values(manifest).find(m => m.href.toLowerCase().includes('cover') && m.mediaType.startsWith('image/'));
-        if (potentialCover) {
-            let coverPath = opfDir + potentialCover.href;
-            const coverFile = zip.file(coverPath);
-            if (coverFile) {
-                const b64 = await coverFile.async("base64");
-                coverBase64 = "data:" + potentialCover.mediaType + ";base64," + b64;
-            }
+    const tocHref = manifest['ncx'] || manifest['toc.ncx'];
+    const tocMap = {};
+    if (tocHref) {
+        const tocFile = zip.file(basePath + tocHref);
+        if (tocFile) {
+            const tocXml = await tocFile.async("string");
+            const tocDom = new DOMParser().parseFromString(tocXml, "text/xml");
+            tocDom.querySelectorAll("navPoint").forEach(np => {
+                const text = np.querySelector("text").textContent.trim();
+                let src = np.querySelector("content").getAttribute("src");
+                src = src.split('#')[0]; // buang anchor hash
+                tocMap[src] = text;
+            });
         }
     }
 
-    const spine = Array.from(opfDoc.getElementsByTagName("itemref")).map(item => item.getAttribute("idref"));
-    let order = 0;
-    
-    // Tag yang sah buat dijadiin blok paragraf / heading
-    const validBlockTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'div', 'section', 'article', 'header'];
+    const spineList = [];
+    opfDom.querySelectorAll("spine > itemref").forEach(ref => {
+        spineList.push(manifest[ref.getAttribute("idref")]);
+    });
 
-    for (const idref of spine) {
-        order++;
-        DOM.loadBar.style.width = `${Math.round((order / spine.length) * 100)}%`;
-        DOM.loadPct.textContent = `${Math.round((order / spine.length) * 100)}%`;
+    const nodes = [];
+    const totalChapters = spineList.length;
 
-        if (!manifest[idref]) continue;
-        const htmlPath = opfDir + manifest[idref].href; 
-        const htmlFile = zip.file(htmlPath);
+    for (let i = 0; i < totalChapters; i++) {
+        const href = spineList[i];
+        if (!href) continue;
+
+        const pct = 20 + Math.round((i / totalChapters) * 80);
+        DOM.loadBar.style.width = `${pct}%`;
+        DOM.loadPct.textContent = `${pct}%`;
+        DOM.loadTxt.textContent = `${d.extractingChapter} ${i+1}/${totalChapters}...`;
+
+        const htmlFile = zip.file(basePath + href);
         if (!htmlFile) continue;
 
-        const htmlStr = await htmlFile.async("text");
-        const doc = (new DOMParser()).parseFromString(htmlStr, "text/html");
-        
-        // Bersihin sampah yang bikin layout kotor
-        doc.querySelectorAll('script, style, nav, footer, iframe, svg, button').forEach(el => el.remove());
+        const htmlText = await htmlFile.async("string");
+        const doc = new DOMParser().parseFromString(htmlText, "text/html");
 
-        // Scan semua elemen secara berurutan dari atas ke bawah (Pre-order Traversal)
-        const allElements = doc.body.querySelectorAll('*');
+        const isTocStr = tocMap[href] || (doc.title ? doc.title.trim() : `Bab ${i+1}`);
+        const tempNodes = [];
 
-        for (let el of allElements) {
-            let tag = el.tagName.toLowerCase();
-            
-            // 1. Eksekusi Gambar
-            if (tag === 'img' || tag === 'image') {
-                let src = el.getAttribute('src') || el.getAttribute('href');
-                if (src && !src.startsWith('http') && !src.startsWith('data:')) {
-                    let absPath = resolveRelativePath(htmlPath, src); 
-                    const imgFile = zip.file(absPath);
-                    if (imgFile) { 
-                        const b64 = await imgFile.async("base64"); 
-                        let mime = "image/jpeg";
-                        if(absPath.toLowerCase().endsWith('.png')) mime = "image/png";
-                        else if(absPath.toLowerCase().endsWith('.gif')) mime = "image/gif";
-                        parsedNodes.push({ tag: 'img', src: `data:${mime};base64,${b64}` }); 
-                    }
-                } else if (src && src.startsWith('data:')) {
-                    parsedNodes.push({ tag: 'img', src: src });
-                }
-                continue;
-            }
+        // Ekstrak Body element
+        const body = doc.body;
+        if (!body) continue;
 
-            // 2. Eksekusi Blok Teks
-            if (validBlockTags.includes(tag)) {
-                // Cek apakah elemen ini punya anak blok lain di dalamnya (Kalo punya, ini cuma Wrapper, lewatin aja)
-                let hasBlockChild = false;
-                const descendants = el.querySelectorAll('*');
-                for (let i = 0; i < descendants.length; i++) {
-                    if (validBlockTags.includes(descendants[i].tagName.toLowerCase())) {
-                        hasBlockChild = true;
-                        break;
-                    }
-                }
-                
-                if (hasBlockChild) continue; // Jangan ambil teksnya, tunggu iterasi sampai ke anak terdalamnya
-                
-                let text = el.textContent.trim().replace(/\s+/g, ' ');
-                if (text.length === 0) continue;
-                
-                let finalTag = 'p';
-                if (['h1', 'h2', 'h3', 'h4'].includes(tag)) finalTag = tag === 'h1' ? 'h1' : 'h2';
-                
-                // Pembersihan kasus Bab spasi alay ("B a B", "B A B")
-                text = text.replace(/B\s*A\s*B/gi, 'BAB');
+        // Flatten semua text node / block element
+        // Simplifikasi: Ambil semua tag paragraf, heading, list
+        const elements = body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, div');
+        let currentP = '';
 
-                // Kalau teks h1/h2 tapi panjangnya ngotak (kayak paragraf utuh), turunin pangkas jadi paragraf
-                if ((finalTag === 'h1' || finalTag === 'h2') && text.length > 150) finalTag = 'p';
+        Array.from(elements).forEach(el => {
+            // Hindari div pembungkus yang isinya element block lain, agar tidak duplikat text
+            if (el.tagName === 'DIV' && el.querySelector('p, h1, h2, div')) return;
 
-                parsedNodes.push({ tag: finalTag, text: text });
-            }
-        }
-    }
-    
-    library.push({ id: Date.now().toString(), type: 'epub', title: bookTitle, nodes: parsedNodes, pages: spine.length, progressPct: 0, lastReadId: null, coverBase64: coverBase64, shape: 'square' });
-    await localforage.setItem('pdf_epub_master', library); 
-    renderLibrary();
-}
+            const text = el.textContent.trim().replace(/\s+/g, ' ');
+            if (!text) return;
 
-function resolveRelativePath(base, relative) {
-    const stack = base.split('/'); stack.pop(); 
-    const parts = relative.split('/');
-    for (const part of parts) { 
-        if (part === '.') continue; 
-        if (part === '..') stack.pop(); 
-        else stack.push(part); 
-    }
-    return stack.join('/');
-}
-
-// 3b. FUNGSI BACA TXT
-async function handleTxt(file, bookTitle) {
-    DOM.loadBar.style.width = '30%';
-    DOM.loadPct.textContent = '30%';
-
-    const text = await file.text();
-    const parsedNodes = [];
-
-    // Split per baris, gabungkan baris kosong jadi pemisah paragraf
-    const lines = text.split('\n');
-    let currentParagraph = '';
-
-    lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed === '') {
-            if (currentParagraph.trim().length > 0) {
-                parsedNodes.push({ tag: 'p', text: currentParagraph.trim().replace(/\s+/g, ' ') });
-                currentParagraph = '';
-            }
-        } else {
-            currentParagraph += (currentParagraph ? ' ' : '') + trimmed;
-        }
-    });
-    // Sisa paragraf terakhir
-    if (currentParagraph.trim().length > 0) {
-        parsedNodes.push({ tag: 'p', text: currentParagraph.trim().replace(/\s+/g, ' ') });
-    }
-
-    DOM.loadBar.style.width = '100%';
-    DOM.loadPct.textContent = '100%';
-
-    if (parsedNodes.length === 0) throw new Error('File teks kosong atau tidak bisa dibaca.');
-
-    library.push({ id: Date.now().toString(), type: 'txt', title: bookTitle, nodes: parsedNodes, pages: 1, progressPct: 0, lastReadId: null, coverBase64: null, shape: 'square' });
-    await localforage.setItem('pdf_epub_master', library);
-    renderLibrary();
-}
-
-// 3c. FUNGSI BACA MD (MARKDOWN)
-async function handleMd(file, bookTitle) {
-    DOM.loadBar.style.width = '30%';
-    DOM.loadPct.textContent = '30%';
-
-    if (typeof marked === 'undefined') throw new Error('Library marked.js tidak ditemukan. Pastikan libs/marked.min.js sudah ada.');
-
-    const text = await file.text();
-
-    // Konfigurasi marked: jangan sanitize, biarkan HTML apa adanya
-    marked.setOptions({ breaks: true, gfm: true });
-
-    DOM.loadBar.style.width = '60%';
-    DOM.loadPct.textContent = '60%';
-
-    // Parse markdown jadi HTML string
-    const htmlString = marked.parse(text);
-
-    // Parse HTML hasil marked ke DOM, lalu ekstrak nodes
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlString, 'text/html');
-    const parsedNodes = [];
-
-    const validTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre', 'hr'];
-
-    doc.body.querySelectorAll(validTags.join(',')).forEach(el => {
-        const tag = el.tagName.toLowerCase();
-
-        // HR jadi pemisah visual (simpan sebagai p kosong dengan marker)
-        if (tag === 'hr') {
-            parsedNodes.push({ tag: 'p', text: '—' });
-            return;
-        }
-
-        // PRE/CODE block: ambil teks mentah
-        if (tag === 'pre') {
-            const codeText = el.textContent.trim();
-            if (codeText.length > 0) parsedNodes.push({ tag: 'p', text: codeText });
-            return;
-        }
-
-        let text = el.textContent.trim().replace(/\s+/g, ' ');
-        if (text.length === 0) return;
-
-        let finalTag = 'p';
-        if (tag === 'h1') finalTag = 'h1';
-        else if (['h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) finalTag = 'h2';
-        else if (tag === 'blockquote') finalTag = 'p';
-
-        parsedNodes.push({ tag: finalTag, text: text });
-    });
-
-    DOM.loadBar.style.width = '100%';
-    DOM.loadPct.textContent = '100%';
-
-    if (parsedNodes.length === 0) throw new Error('File Markdown kosong atau tidak bisa diparsing.');
-
-    library.push({ id: Date.now().toString(), type: 'md', title: bookTitle, nodes: parsedNodes, pages: 1, progressPct: 0, lastReadId: null, coverBase64: null, shape: 'square' });
-    await localforage.setItem('pdf_epub_master', library);
-    renderLibrary();
-}
-
-// 4. LOOKUP DICTIONARY — Orchestrator Wikipedia + Gemini
-window.lookupDictionary = function() {
-    const savedText = currentSelection.text;
-    if (!savedText) return;
-
-    const apiKey = localStorage.getItem('gemini_api_key');
-
-    window.hideSelectionMenu();
-    window.getSelection().removeAllRanges();
-
-    const modal = document.getElementById('ai-modal');
-    const termEl = document.getElementById('ai-term');
-    const wikiCard = document.getElementById('wiki-card');
-    const wikiContent = document.getElementById('wiki-content');
-    const wikiLoading = document.getElementById('wiki-loading');
-    const geminiCard = document.getElementById('gemini-card');
-    const geminiContent = document.getElementById('gemini-content');
-    const geminiLoading = document.getElementById('gemini-loading');
-
-    termEl.textContent = savedText.length > 40 ? savedText.substring(0, 40) + '...' : savedText;
-
-    if (wikiCard) wikiCard.classList.remove('hidden');
-    if (wikiLoading) wikiLoading.classList.remove('hidden');
-    if (wikiContent) { wikiContent.innerHTML = ''; wikiContent.classList.add('hidden'); }
-
-    if (geminiCard) {
-        if (apiKey) {
-            geminiCard.classList.remove('hidden');
-            if (geminiLoading) geminiLoading.classList.remove('hidden');
-            if (geminiContent) { geminiContent.innerHTML = ''; geminiContent.classList.add('hidden'); }
-        } else {
-            geminiCard.classList.add('hidden');
-        }
-    }
-
-    pushAppHistory('ai-modal');
-    modal.classList.remove('hidden');
-    requestAnimationFrame(() => {
-        modal.classList.remove('opacity-0');
-        document.getElementById('ai-sheet').classList.remove('translate-y-full');
-    });
-
-    // Fetch Wikipedia
-    const wikiLangCode = wikiLang === 'id' ? 'id' : wikiLang === 'es' ? 'es' : 'en';
-    const wikiQuery = encodeURIComponent(savedText.split(' ').slice(0, 4).join(' '));
-    fetch(`https://${wikiLangCode}.wikipedia.org/api/rest_v1/page/summary/${wikiQuery}`)
-        .then(r => r.json())
-        .then(data => {
-            if (wikiLoading) wikiLoading.classList.add('hidden');
-            if (!wikiContent) return;
-            const extract = (data.extract || '').trim();
-            if (extract) {
-                wikiContent.innerHTML = `
-                    <p class="text-sm leading-relaxed text-m3-onSurfaceVariant font-medium">${extract}</p>
-                    ${data.content_urls ? `<a href="${data.content_urls.mobile.page}" target="_blank" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-m3-primary opacity-80">Wikipedia <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ''}
-                `;
-                if (window.lucide) window.lucide.createIcons();
+            // Jika dia Heading (H1-H6), tandai sebagai item sub-TOC
+            if (/^H[1-6]$/.test(el.tagName)) {
+                if (currentP) { tempNodes.push({ text: currentP, html: `<p>${currentP}</p>`, isToc: false }); currentP = ''; }
+                const depth = parseInt(el.tagName.substring(1));
+                tempNodes.push({ text: text, html: `<h1 class="text-2xl font-bold mb-4 mt-6 opacity-90">${text}</h1>`, isToc: true, depth: depth });
             } else {
-                const notFoundMsg = wikiLang === 'id' ? 'Tidak ditemukan di Wikipedia.'
-                    : wikiLang === 'es' ? 'No encontrado en Wikipedia.'
-                    : 'Not found on Wikipedia.';
-                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${notFoundMsg}</p>`;
-            }
-            wikiContent.classList.remove('hidden');
-        })
-        .catch(() => {
-            if (wikiLoading) wikiLoading.classList.add('hidden');
-            if (wikiContent) {
-                const failMsg = wikiLang === 'id' ? 'Gagal memuat Wikipedia.'
-                    : wikiLang === 'es' ? 'Error al cargar Wikipedia.'
-                    : 'Failed to load Wikipedia.';
-                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${failMsg}</p>`;
-                wikiContent.classList.remove('hidden');
+                currentP += (currentP ? ' ' : '') + text;
+                if (currentP.length > 300) { // Potong paragraf terlalu panjang untuk performa vDOM list
+                     tempNodes.push({ text: currentP, html: `<p>${currentP}</p>`, isToc: false });
+                     currentP = '';
+                }
             }
         });
+        
+        if (currentP) tempNodes.push({ text: currentP, html: `<p>${currentP}</p>`, isToc: false });
 
-    // Fetch Gemini (kalau ada API key)
-    if (apiKey) {
-        const modelVersion = localStorage.getItem('gemini_model') || 'gemini-2.5-flash-preview-05-20';
-        let langInstruction = wikiLang === 'id'
-            ? 'Gunakan bahasa Indonesia. Jelaskan arti, konteks, dan berikan contoh kalimat singkat. Tulis dalam paragraf biasa, tanpa poin atau bullet. Langsung ke penjelasan tanpa kata pembuka.'
-            : wikiLang === 'es'
-            ? 'Usa el español. Explica el significado, contexto, y da un ejemplo de oración corta. Escribe en párrafos normales, sin puntos ni viñetas. Ve directo a la explicación sin frases introductorias.'
-            : 'Use English. Explain the meaning, context, and provide a short example sentence. Write in plain paragraphs, no bullet points. No introductory phrases, go straight to the explanation.';
-        let promptText = `Provide a concise dictionary definition and explanation for: "${savedText}". ${langInstruction}`;
+        // Tandai node pertama dari file ini sebagai TOC Utama (dari NCX) jika ada
+        if (tempNodes.length > 0) {
+            tempNodes[0].isToc = true;
+            tempNodes[0].text = isTocStr;
+            tempNodes[0].depth = 1;
+        }
 
-        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=${apiKey}`, {
+        nodes.push(...tempNodes);
+    }
+
+    if (nodes.length === 0) throw new Error("Gagal mengekstrak konten EPUB.");
+
+    const book = {
+        id: 'book_' + Date.now(),
+        title: title || "Untitled Book", cover: cover,
+        progress: 0, lastReadNode: 0, lastRead: Date.now(),
+        nodes: nodes,
+        bookmarks: [] // Inisialisasi properti bookmark untuk fitur Highlight
+    };
+
+    await localforage.setItem(book.id, book);
+}
+
+
+// 6. KAMUS & GEMINI AI
+window.saveGeminiModel = function() {
+    const val = document.getElementById('gemini-model-select').value;
+    localStorage.setItem('gemini_model', val);
+};
+
+window.saveGeminiKey = function() {
+    const key = document.getElementById('gemini-api-key').value.trim();
+    const d = i18n[wikiLang] || i18n['en'];
+    if (key) {
+        localStorage.setItem('gemini_api_key', key);
+        showDialog("Tersimpan", d.keySaved, "check-circle", [{text: d.btnClose, primary: true}]);
+    } else {
+        localStorage.removeItem('gemini_api_key');
+    }
+};
+
+window.lookupDictionary = async function() {
+    const term = currentSelection.text;
+    if (!term) return;
+
+    // Bersihin seleksi UI native dan menu
+    window.getSelection().removeAllRanges();
+    document.getElementById('selection-menu').classList.add('hidden');
+    
+    // Siapin state bahasa saat ini
+    let currentLang = wikiLang; 
+    let wikiUrlLang = currentLang === 'es' ? 'es' : currentLang === 'id' ? 'id' : 'en';
+
+    document.getElementById('ai-term').textContent = term;
+    
+    // UI Resets
+    const wikiCard = document.getElementById('wiki-card');
+    const wikiLoad = document.getElementById('wiki-loading');
+    const wikiCont = document.getElementById('wiki-content');
+    const geminiCard = document.getElementById('gemini-card');
+    const geminiLoad = document.getElementById('gemini-loading');
+    const geminiCont = document.getElementById('gemini-content');
+
+    wikiLoad.classList.remove('hidden');
+    wikiCont.classList.add('hidden');
+    wikiCont.innerHTML = '';
+    
+    geminiCard.classList.add('hidden');
+    if (geminiLoad) geminiLoad.classList.remove('hidden');
+    if (geminiCont) geminiCont.classList.add('hidden');
+    
+    openModal('ai-modal', 'ai-sheet', true);
+
+    // Wikipedia Fetch
+    try {
+        const res = await fetch(`https://${wikiUrlLang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        
+        wikiLoad.classList.add('hidden');
+        wikiCont.innerHTML = `
+            <p class="text-sm leading-relaxed font-medium text-m3-onSurface mb-2">${data.extract}</p>
+            <a href="${data.content_urls.desktop.page}" target="_blank" class="text-[10px] font-bold uppercase tracking-wider text-m3-primary hover:underline">Baca selengkapnya &rarr;</a>
+        `;
+        wikiCont.classList.remove('hidden');
+    } catch (e) {
+        wikiLoad.classList.add('hidden');
+        const d = i18n[wikiLang] || i18n['en'];
+        wikiCont.innerHTML = `<p class="text-sm opacity-50 font-bold italic">${d.searchNotFound}</p>`;
+        wikiCont.classList.remove('hidden');
+    }
+
+    // Gemini Fetch
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (apiKey && geminiCard) {
+        geminiCard.classList.remove('hidden');
+        const modelName = localStorage.getItem('gemini_model') || 'gemini-2.5-flash-lite';
+        
+        // Sesuaikan Prompt berdasarkan bahasa
+        let promptText = "";
+        if (currentLang === 'id') {
+            promptText = `Jelaskan secara singkat, jelas, padat, dan mudah dipahami apa itu "${term}" dalam konteks umum. Maksimal 3 kalimat. Bahasa Indonesia.`;
+        } else if (currentLang === 'es') {
+            promptText = `Explica brevemente, claramente y de forma concisa qué es "${term}" en un contexto general. Máximo 3 oraciones. En español.`;
+        } else {
+            promptText = `Explain briefly, clearly, and concisely what "${term}" is in a general context. Maximum 3 sentences. In English.`;
+        }
+
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
@@ -656,10 +535,13 @@ window.closeAiModal = function(isFromHistory = false) {
     const m = document.getElementById('ai-modal');
     const s = document.getElementById('ai-sheet');
     
-    s.classList.add('translate-y-full');
+    if (s.classList.contains('translate-y-0')) {
+        s.style.transform = 'translateY(100%)';
+    } else {
+        s.classList.remove('translate-y-0');
+        s.classList.add('translate-y-full');
+    }
+    
     m.classList.add('opacity-0');
-    setTimeout(() => m.classList.add('hidden'), 300);
-}
-
-
-
+    setTimeout(() => { m.classList.add('hidden'); }, 300);
+};
