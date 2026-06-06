@@ -181,5 +181,57 @@ const i18n = {
         setAiConfig: "AI Configuration", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Add your API Key to get smart definitions from AI. (Optimal setup: use Gemini 2.5 Flash Lite for maximum speed).", keySaved: "API Key saved successfully.",
 
         statTitle: "Statistics", statTotal: "Collection", statReading: "Reading", statCompleted: "Completed", statNotes: "Notes"
+    },
+    es: {
+        libEmpty: "Biblioteca Vacía.", searchBooks: "Buscar libros...", loadingDocs: "Leyendo Documento...",
+        booksCount: "Libros", continueReading: "Continuar Leyendo", bookCollection: "Colección de Libros",
+        selected: "Seleccionado", cancel: "Cancelar", delete: "Eliminar", deleteConfirm: "¿Eliminar permanentemente los libros seleccionados?",
+        optSelect: "Seleccionar Varios", optEdit: "Editar Detalles", optDelete: "Eliminar Permanentemente",
+
+        pinnedBooks: "Libros Fijados",
+        optPin: "Fijar Libro", optUnpin: "Desfijar Libro",
+
+        navBookmark: "Marcador",
+        bookmarkTitle: "Panel de Marcadores",
+        bookmarkEmpty: "Aún no hay marcadores.",
+
+        bookmarkModalTitle: "Marcador",
+        bookmarkTitlePlaceholder: "Título del marcador...",
+        bookmarkNotePlaceholder: "Escribe una nota (opcional)...",
+        bookmarkCancel: "Cancelar",
+        bookmarkSave: "Guardar",
+
+        extractingCover: "Extrayendo Portada...", readingPage: "Leyendo Página", formattingText: "Formateando Texto...",
+        extractingEpub: "Extrayendo EPUB...", analyzingStructure: "Analizando Estructura...", extractingChapter: "Extrayendo Capítulo",
+        welcomeTitle: "Bienvenido a Baca.", welcomeDesc: "Por favor lee estas instrucciones para una experiencia de lectura óptima.",
+        welBackup: "Copia de Seguridad", welBackupDesc: "Usa la función de Copia de Seguridad en Ajustes. Los datos se guardan como archivo JSON directamente en la carpeta <b>Documents</b> del almacenamiento principal. Para restaurar, busca ese archivo en la carpeta Documents.",
+        welFormat: "Limitaciones de Formato", welFormatDesc: "<b>PDF:</b> Solo texto. Imágenes ignoradas.<br><b>EPUB:</b> Totalmente compatible.",
+        welPrivacy: "Privacidad Total", welPrivacyDesc: "Procesado localmente en tu dispositivo.", welBtn: "Entendido",
+        setMainTitle: "Ajustes", setPalette: "Paleta de Tema", setLang: "Idioma", setInfo: "Info y Soporte",
+        btnInfo: "Ver Instrucciones", btnDonate: "Invítame un Café", btnClose: "Cerrar",
+        setData: "Datos de la App", btnBackup: "Copia de Seguridad", btnRestore: "Restaurar Datos",
+
+        btnUpdate: "Buscar Actualizaciones",
+        updateChecking: "Verificando versión...",
+        updateLatestTitle: "Actualizado",
+        updateLatestDesc: "Estás usando la última versión.",
+        updateAvailableTitle: "¡Actualización Disponible!",
+        updateAvailableDesc: "Nueva versión disponible. ¿Abrir página de descarga?",
+        updateError: "Error al buscar actualizaciones. Revisa tu conexión a internet.",
+        btnDownload: "Descargar",
+
+        navBack: "Volver", navToc: "Contenido", navSearch: "Buscar", navText: "Texto", navFull: "Pantalla Completa",
+        readerLoading: "Cargando Libro...", tocTitle: "Tabla de Contenido", setTitle: "Apariencia",
+        setTheme: "Modo de Tema", setSize: "Tamaño de Texto", setAlign: "Alineación de Texto", setFont: "Tipo de Fuente",
+        searchPlaceholder: "Buscar en el libro...", searchNotFound: "No encontrado.",
+        aiTitle: "Definición", aiLoading: "Buscando referencias...", noInternet: "Problema de conexión a internet.",
+        deleteNoteConfirm: "¿Eliminar esta nota/resaltado?",
+        editTitle: "Editar Detalles", editBookTitle: "Título del Libro", editBookCover: "Imagen de Portada", editBookShape: "Forma de Tarjeta", editCancel: "Cancelar", editSave: "Guardar", optCancel: "Cancelar", themeLight: "Modo Claro", themeDark: "Modo Oscuro", amoledLabel: "AMOLED (Negro Puro)",
+        shapeDyn: "Dinámico", shapeRound: "Redondeado", shapeSquare: "Cuadrado",
+        rawBakTitle: "Datos de Copia de Seguridad", rawBakDesc: "Por restricciones del dispositivo, copia el texto de abajo y guárdalo en tus Notas o un archivo de texto.", rawBakCopy: "Copiar Texto", rawBakClose: "Cerrar",
+        rawResTitle: "Restaurar Datos", rawResDesc: "Pega aquí el texto JSON de tu copia de seguridad, O elige un archivo JSON desde tu dispositivo.", rawResFile: "Elegir Archivo", rawResProcess: "Procesar Texto", rawResClose: "Cancelar",
+        setAiConfig: "Configuración de IA", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Agrega tu API Key para obtener definiciones inteligentes de IA. (Configuración óptima: usa Gemini 2.5 Flash Lite para máxima velocidad).", keySaved: "API Key guardada correctamente.",
+
+        statTitle: "Estadísticas", statTotal: "Colección", statReading: "Leyendo", statCompleted: "Completado", statNotes: "Notas"
     }
 };
