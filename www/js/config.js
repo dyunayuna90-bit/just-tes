@@ -1,3 +1,7 @@
+window.APP_VERSION = "2.0.5";
+window.UPDATE_URL = "https://raw.githubusercontent.com/dyunayuna90-bit/baca./main/package.json";
+window.RELEASES_URL = "https://github.com/dyunayuna90-bit/baca./releases/latest";
+
 // Konfigurasi Tailwind CSS untuk kustomisasi warna dan font
 window.tailwind = window.tailwind || {};
 window.tailwind.config = {
@@ -73,57 +77,161 @@ const M3_PALETTES = {
 // Data Kamus / Terjemahan Bahasa (i18n)
 const i18n = {
     id: {
-        libEmpty: "Perpustakaan Kosong.", searchBooks: "Cari buku...", loadingDocs: "Membaca Dokumen...", 
+        libEmpty: "Perpustakaan Kosong.", searchBooks: "Cari buku...", loadingDocs: "Membaca Dokumen...", loadingDocsMulti: "Membaca buku {current} dari {total}...", 
         booksCount: "Buku", continueReading: "Lanjutkan Membaca", bookCollection: "Koleksi Buku", 
         selected: "Terpilih", cancel: "Batal", delete: "Hapus", deleteConfirm: "Hapus buku yang dipilih secara permanen?", 
         optSelect: "Pilih Beberapa", optEdit: "Edit Detail", optDelete: "Hapus Permanen",
+        
+        pinnedBooks: "Buku Disematkan",
+        optPin: "Sematkan Buku", optUnpin: "Lepas Sematan",
+        
+        navBookmark: "Bookmark",
+        bookmarkTitle: "Panel Bookmark",
+        bookmarkEmpty: "Belum ada pembatas buku.",
+        
+        bookmarkModalTitle: "Bookmark",
+        bookmarkTitlePlaceholder: "Judul Bookmark...",
+        bookmarkNotePlaceholder: "Tulis catatan (opsional)...",
+        bookmarkCancel: "Batal",
+        bookmarkSave: "Simpan",
+
         extractingCover: "Mengekstrak Sampul...", readingPage: "Membaca Halaman", formattingText: "Memformat Teks...",
         extractingEpub: "Mengekstrak EPUB...", analyzingStruct: "Menganalisa Struktur...", extractingChapter: "Mengekstrak Bab",
         welcomeTitle: "Selamat Datang di Baca.", welcomeDesc: "Harap baca instruksi berikut untuk pengalaman membaca yang optimal.",
         welBackup: "Pencadangan Data", welBackupDesc: "Gunakan fitur Backup di Pengaturan. Data di-backup jadi file JSON dan otomatis masuk ke folder <b>Documents</b> di penyimpanan utama HP. Ingat, di folder Documents, bukan di DCIM atau Download! Nanti buat restore, anda tinggal klik 'Pilih File' dan cari file tersebut.",
-        welFormat: "Batasan Format", welFormatDesc: "<b>PDF:</b> Hanya teks. Gambar diabaikan.<br><b>EPUB:</b> Didukung penuh.",
+        welFormat: "Batasan Format", welFormatDesc: "<b>PDF:</b> Hanya teks. Gambar diabaikan.<br><b>EPUB:</b> Didukung penuh.<br><b>TXT & MD:</b> Didukung penuh.",
         welPrivacy: "Privasi Total", welPrivacyDesc: "Diproses secara lokal di perangkat Anda.", welBtn: "Mengerti",
         setMainTitle: "Pengaturan", setPalette: "Palet Tema", setLang: "Bahasa", setInfo: "Info & Dukungan",
         btnInfo: "Lihat Instruksi", btnDonate: "Traktir Kopi (Donasi)", btnClose: "Tutup",
         setData: "Data Aplikasi", btnBackup: "Backup Data", btnRestore: "Pulihkan",
+        
+        // Teks Sistem Cek Update
+        btnUpdate: "Cek Pembaruan",
+        updateChecking: "Mengecek versi...",
+        updateLatestTitle: "Sudah Versi Terbaru",
+        updateLatestDesc: `Aplikasi lu udah pakai versi paling baru.`,
+        updateAvailableTitle: "Update Tersedia!",
+        updateAvailableDesc: "Versi terbaru udah rilis nih. Mau buka halaman download sekarang?",
+        updateError: "Gagal ngecek update. Pastiin internet lu nyala atau Repo Github lu udah bener.",
+        btnDownload: "Download",
+
         navBack: "Kembali", navToc: "Daftar Isi", navSearch: "Pencarian", navText: "Teks", navFull: "Penuh",
         readerLoading: "Memuat Buku...", tocTitle: "Daftar Isi", setTitle: "Tampilan",
         setTheme: "Mode Tema", setSize: "Ukuran Teks", setAlign: "Perataan Teks", setFont: "Jenis Font",
         searchPlaceholder: "Cari dalam buku...", searchNotFound: "Tidak ditemukan.",
-        noteTitle: "Catatan", noteCancel: "Batal", noteSave: "Simpan", notePlaceholder: "Tuliskan catatan...",
         aiTitle: "Penjelasan", aiLoading: "Mencari referensi...", noInternet: "Koneksi internet bermasalah.",
         deleteNoteConfirm: "Hapus catatan/sorotan ini?",
         editTitle: "Edit Detail", editBookTitle: "Judul Buku", editBookCover: "Gambar Sampul", editBookShape: "Bentuk Kartu", editCancel: "Batal", editSave: "Simpan", optCancel: "Batal", themeLight: "Mode Terang", themeDark: "Mode Gelap", amoledLabel: "AMOLED (Hitam Pekat)",
         shapeDyn: "Dinamis", shapeRound: "Bulat", shapeSquare: "Kotak",                
         rawBakTitle: "Data Backup Mentah", rawBakDesc: "Karena batasan sistem perangkat, silakan salin teks di bawah ini dan simpan ke dalam Note/Pesan WhatsApp/File teks dengan aman.", rawBakCopy: "Salin Teks", rawBakClose: "Tutup",
         rawResTitle: "Pulihkan Data", rawResDesc: "Paste teks mentah (JSON) backup lu di kotak ini, ATAU pilih file JSON dari perangkat.", rawResFile: "Pilih File", rawResProcess: "Proses Teks", rawResClose: "Batal",
-        setAiConfig: "Konfigurasi AI", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Tambahkan API Key untuk mendapatkan penjelasan pintar dari AI. (Saran optimal: gunakan Gemini 2.5 Flash Lite untuk kecepatan maksimal).", keySaved: "API Key berhasil disimpan."
+        setAiConfig: "Konfigurasi AI", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Tambahkan API Key untuk mendapatkan penjelasan pintar dari AI. (Saran optimal: gunakan Gemini 2.5 Flash Lite untuk kecepatan maksimal).", keySaved: "API Key berhasil disimpan.",
+
+        statTitle: "Statistik Membaca", statTotal: "Koleksi", statReading: "Dibaca", statCompleted: "Selesai", statNotes: "Catatan"
     },
     en: {
-        libEmpty: "Library is Empty.", searchBooks: "Search books...", loadingDocs: "Reading Document...", 
+        libEmpty: "Library is Empty.", searchBooks: "Search books...", loadingDocs: "Reading Document...", loadingDocsMulti: "Reading book {current} of {total}...", 
         booksCount: "Books", continueReading: "Continue Reading", bookCollection: "Book Collection", 
         selected: "Selected", cancel: "Cancel", delete: "Delete", deleteConfirm: "Permanently delete selected books?", 
         optSelect: "Select Multiple", optEdit: "Edit Details", optDelete: "Delete Permanently",
+        
+        pinnedBooks: "Pinned Books",
+        optPin: "Pin Book", optUnpin: "Unpin Book",
+        
+        navBookmark: "Bookmark",
+        bookmarkTitle: "Bookmarks Panel",
+        bookmarkEmpty: "No bookmarks yet.",
+        
+        bookmarkModalTitle: "Bookmark",
+        bookmarkTitlePlaceholder: "Bookmark Title...",
+        bookmarkNotePlaceholder: "Write a note (optional)...",
+        bookmarkCancel: "Cancel",
+        bookmarkSave: "Save",
+
         extractingCover: "Extracting Cover...", readingPage: "Reading Page", formattingText: "Formatting Text...",
         extractingEpub: "Extracting EPUB...", analyzingStructure: "Analyzing Structure...", extractingChapter: "Extracting Chapter",
         welcomeTitle: "Welcome to Baca.", welcomeDesc: "Please read these instructions for the optimal reading experience.",
         welBackup: "Data Backup", welBackupDesc: "Use the Backup feature in Settings. Data is saved as a JSON file directly to the <b>Documents</b> folder on your device's main storage (not DCIM or Downloads). To restore, simply find and select that backup file from the Documents folder.",
-        welFormat: "Format Limitations", welFormatDesc: "<b>PDF:</b> Text only. Images ignored.<br><b>EPUB:</b> Fully supported.",
+        welFormat: "Format Limitations", welFormatDesc: "<b>PDF:</b> Text only. Images ignored.<br><b>EPUB:</b> Fully supported.<br><b>TXT & MD:</b> Fully supported.",
         welPrivacy: "Total Privacy", welPrivacyDesc: "Processed locally on your device.", welBtn: "Got it",
         setMainTitle: "Settings", setPalette: "Theme Palette", setLang: "Language", setInfo: "Info & Support",
         btnInfo: "View Instructions", btnDonate: "Buy Me a Coffee", btnClose: "Close",
         setData: "App Data", btnBackup: "Backup Data", btnRestore: "Restore Data",
+        
+        // Teks Sistem Cek Update
+        btnUpdate: "Check for Updates",
+        updateChecking: "Checking version...",
+        updateLatestTitle: "Up to Date",
+        updateLatestDesc: `You are running the latest version.`,
+        updateAvailableTitle: "Update Available!",
+        updateAvailableDesc: "Version is out. Open the download page now?",
+        updateError: "Failed to check for updates. Check your internet connection.",
+        btnDownload: "Download",
+
         navBack: "Back", navToc: "Contents", navSearch: "Search", navText: "Text", navFull: "Full",
         readerLoading: "Loading Book...", tocTitle: "Table of Contents", setTitle: "Appearance",
         setTheme: "Theme Mode", setSize: "Text Size", setAlign: "Text Alignment", setFont: "Font Family",
         searchPlaceholder: "Search in book...", searchNotFound: "Not found.",
-        noteTitle: "Note", noteCancel: "Cancel", noteSave: "Save", notePlaceholder: "Write a note...",
         aiTitle: "Definition", aiLoading: "Looking for references...", noInternet: "Internet connection issue.",
         deleteNoteConfirm: "Delete this note/highlight?",
         editTitle: "Edit Details", editBookTitle: "Book Title", editBookCover: "Cover Image", editBookShape: "Card Shape", editCancel: "Cancel", editSave: "Save", optCancel: "Cancel", themeLight: "Light Mode", themeDark: "Dark Mode", amoledLabel: "AMOLED (Pitch Black)",
         shapeDyn: "Dynamic", shapeRound: "Rounded", shapeSquare: "Square",               
         rawBakTitle: "Raw Backup Data", rawBakDesc: "Due to device restrictions, please copy the text below and save it safely in your Notes or a text file.", rawBakCopy: "Copy Text", rawBakClose: "Close",
         rawResTitle: "Restore Data", rawResDesc: "Paste your raw backup JSON text here, OR choose a JSON file from your device.", rawResFile: "Select File", rawResProcess: "Process Text", rawResClose: "Cancel",
-        setAiConfig: "AI Configuration", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Add your API Key to get smart definitions from AI. (Optimal setup: use Gemini 2.5 Flash Lite for maximum speed).", keySaved: "API Key saved successfully."
+        setAiConfig: "AI Configuration", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Add your API Key to get smart definitions from AI. (Optimal setup: use Gemini 2.5 Flash Lite for maximum speed).", keySaved: "API Key saved successfully.",
+
+        statTitle: "Statistics", statTotal: "Collection", statReading: "Reading", statCompleted: "Completed", statNotes: "Notes"
+    },
+    es: {
+        libEmpty: "Biblioteca vacía.", searchBooks: "Buscar libros...", loadingDocs: "Leyendo documento...", loadingDocsMulti: "Leyendo libro {current} de {total}...",
+        booksCount: "Libros", continueReading: "Continuar leyendo", bookCollection: "Colección de libros",
+        selected: "Seleccionados", cancel: "Cancelar", delete: "Eliminar", deleteConfirm: "¿Eliminar los libros seleccionados de forma permanente?",
+        optSelect: "Seleccionar varios", optEdit: "Editar detalles", optDelete: "Eliminar permanentemente",
+
+        pinnedBooks: "Libros fijados",
+        optPin: "Fijar libro", optUnpin: "Desfijar libro",
+
+        navBookmark: "Marcador",
+        bookmarkTitle: "Panel de marcadores",
+        bookmarkEmpty: "Aún no hay marcadores.",
+
+        bookmarkModalTitle: "Marcador",
+        bookmarkTitlePlaceholder: "Título del marcador...",
+        bookmarkNotePlaceholder: "Escribe una nota (opcional)...",
+        bookmarkCancel: "Cancelar",
+        bookmarkSave: "Guardar",
+
+        extractingCover: "Extrayendo portada...", readingPage: "Leyendo página", formattingText: "Formateando texto...",
+        extractingEpub: "Extrayendo EPUB...", analyzingStruct: "Analizando estructura...", extractingChapter: "Extrayendo capítulo",
+        welcomeTitle: "Bienvenido a Baca.", welcomeDesc: "Lee estas instrucciones para una experiencia de lectura óptima.",
+        welBackup: "Copia de seguridad", welBackupDesc: "Usa la función de Copia de seguridad en Ajustes. Los datos se guardan como archivo JSON directamente en la carpeta <b>Documents</b> del almacenamiento principal. Para restaurar, selecciona ese archivo desde la carpeta Documents.",
+        welFormat: "Limitaciones de formato", welFormatDesc: "<b>PDF:</b> Solo texto. Las imágenes se ignoran.<br><b>EPUB:</b> Compatible al 100%.<br><b>TXT & MD:</b> Compatible al 100%.",
+        welPrivacy: "Privacidad total", welPrivacyDesc: "Procesado localmente en tu dispositivo.", welBtn: "Entendido",
+        setMainTitle: "Ajustes", setPalette: "Paleta de tema", setLang: "Idioma", setInfo: "Info y soporte",
+        btnInfo: "Ver instrucciones", btnDonate: "Invítame un café", btnClose: "Cerrar",
+        setData: "Datos de la app", btnBackup: "Copia de seguridad", btnRestore: "Restaurar",
+
+        btnUpdate: "Buscar actualizaciones",
+        updateChecking: "Verificando versión...",
+        updateLatestTitle: "Ya está actualizado",
+        updateLatestDesc: "Estás usando la versión más reciente.",
+        updateAvailableTitle: "¡Actualización disponible!",
+        updateAvailableDesc: "Hay una nueva versión disponible. ¿Abrir la página de descarga ahora?",
+        updateError: "Error al buscar actualizaciones. Verifica tu conexión a internet.",
+        btnDownload: "Descargar",
+
+        navBack: "Volver", navToc: "Contenido", navSearch: "Buscar", navText: "Texto", navFull: "Completo",
+        readerLoading: "Cargando libro...", tocTitle: "Tabla de contenido", setTitle: "Apariencia",
+        setTheme: "Modo de tema", setSize: "Tamaño de texto", setAlign: "Alineación de texto", setFont: "Tipo de fuente",
+        searchPlaceholder: "Buscar en el libro...", searchNotFound: "No encontrado.",
+        aiTitle: "Definición", aiLoading: "Buscando referencias...", noInternet: "Problema de conexión a internet.",
+        deleteNoteConfirm: "¿Eliminar esta nota/resaltado?",
+        editTitle: "Editar detalles", editBookTitle: "Título del libro", editBookCover: "Imagen de portada", editBookShape: "Forma de tarjeta", editCancel: "Cancelar", editSave: "Guardar", optCancel: "Cancelar", themeLight: "Modo claro", themeDark: "Modo oscuro", amoledLabel: "AMOLED (Negro puro)",
+        shapeDyn: "Dinámico", shapeRound: "Redondeado", shapeSquare: "Cuadrado",
+        rawBakTitle: "Datos de copia de seguridad", rawBakDesc: "Debido a restricciones del sistema, copia el texto a continuación y guárdalo en Notas o en un archivo de texto.", rawBakCopy: "Copiar texto", rawBakClose: "Cerrar",
+        rawResTitle: "Restaurar datos", rawResDesc: "Pega el texto JSON de tu copia de seguridad aquí, O elige un archivo JSON desde tu dispositivo.", rawResFile: "Seleccionar archivo", rawResProcess: "Procesar texto", rawResClose: "Cancelar",
+        setAiConfig: "Configuración de IA", geminiPlaceholder: "Gemini API Key...", geminiDesc: "Agrega tu API Key para obtener definiciones inteligentes de IA. (Configuración óptima: usa Gemini 2.5 Flash Lite para máxima velocidad).", keySaved: "API Key guardada correctamente.",
+
+        statTitle: "Estadísticas", statTotal: "Colección", statReading: "Leyendo", statCompleted: "Completados", statNotes: "Notas"
     }
 };
