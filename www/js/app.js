@@ -1,5 +1,5 @@
-// --- APP LOGIC (NATIVE OPTIMIZED) ---
-// Mengurus interaksi UI, Tema, Render Library, Fitur In-Book Bookmark, & Lazy Loading Book.
+// --- APP LOGIC ---
+// Mengurus interaksi UI, Tema, Render Library, & Fitur In-Book Bookmark Berwarna
 
 // 1. GLOBAL STATE & DOM REFERENCES
 let library = []; 
@@ -16,7 +16,7 @@ let editingAnnotId = null;
 let isDark = localStorage.getItem('theme') !== 'light'; 
 let currentThemeKey = localStorage.getItem('m3-key') || 'orchid';
 let isAmoled = localStorage.getItem('amoled') === 'true';
-let wikiLang = localStorage.getItem('wiki_lang') || 'id';
+let wikiLang = localStorage.getItem('wiki_lang') || 'en';
 
 const DOM = {};
 
@@ -34,1216 +34,1806 @@ document.addEventListener("DOMContentLoaded", () => {
         loadTxt: document.getElementById('loading-text'), 
         loadBar: document.getElementById('loading-bar'), 
         loadPct: document.getElementById('loading-percent'),
+        file: document.getElementById('doc-upload'), 
+        backBtn: document.getElementById('btn-back'),
+        tocBtn: document.getElementById('btn-toc'), 
+        setBtn: document.getElementById('btn-settings'),
         inner: document.getElementById('reader-inner'), 
-        content: document.getElementById('reader-content'),
         title: document.getElementById('reader-title'), 
+        count: document.getElementById('library-count'),
         tocPanel: document.getElementById('toc-panel'), 
         tocList: document.getElementById('toc-list'),
-        overlay: document.getElementById('side-panel-overlay'),
-        readProg: document.getElementById('reading-progress-bar'),
-        progTxt: document.getElementById('reader-progress-text'),
-        settingsPanel: document.getElementById('settings-panel'),
+        setPanel: document.getElementById('settings-panel'),
         bookmarkPanel: document.getElementById('bookmark-panel'),
         bookmarkList: document.getElementById('bookmark-list'),
+        readContent: document.getElementById('reader-content'), 
+        progBar: document.getElementById('reading-progress-bar'), 
+        progTxt: document.getElementById('reader-progress-text'),
+        searchInput: document.getElementById('inbook-search-input'), 
         searchRes: document.getElementById('search-results-panel'),
-        searchInput: document.getElementById('inbook-search-input'),
-        pinnedSection: document.getElementById('pinned-books-section'),
-        pinnedGrid: document.getElementById('pinned-book-grid'),
-        colHeading: document.getElementById('collection-heading')
+        globalSearch: document.getElementById('global-search')
     });
 
-    applyThemeGlobal(currentThemeKey, isDark);
-    applyI18n();
+    setupScrollListeners();
+    setupSearchListeners();
+    syncWikiLangUI();
+    applyLanguage();
+    applyTypo();
+    applyThemeToDOM();
     loadLibrary();
-    setupIntersectionObserver();
+    setupSwipeToDismiss(); // Nyalain Gestur Aman
 
-    // Setup Event Listeners UI
-    document.getElementById('btn-back').onclick = () => { history.back(); };
-    document.getElementById('btn-toc').onclick = () => togglePanel(DOM.tocPanel, 'toc', 'btn-toc');
-    document.getElementById('btn-settings').onclick = () => togglePanel(DOM.settingsPanel, 'settings', 'btn-settings');
-    
-    document.getElementById('doc-upload').addEventListener('change', () => { window.scrollTo({top: 0, behavior: 'smooth'}); });
-    
-    // Pencarian Library
-    const libSearch = document.getElementById('global-search');
-    const searchArea = document.getElementById('search-area');
-    const searchIcon = document.getElementById('search-icon-lib');
-    if(libSearch && searchArea) {
-        libSearch.addEventListener('focus', () => { 
-            searchArea.classList.add('search-active'); 
-            searchIcon.classList.remove('opacity-70');
-            searchIcon.classList.add('text-m3-primary');
-        });
-        libSearch.addEventListener('blur', () => { 
-            if(!libSearch.value) { 
-                searchArea.classList.remove('search-active'); 
-                searchIcon.classList.add('opacity-70');
-                searchIcon.classList.remove('text-m3-primary');
-            } 
-        });
-        libSearch.addEventListener('input', (e) => { renderLibrary(e.target.value.toLowerCase()); });
+    if (!localStorage.getItem('first_time_seen_v5')) {
+        setTimeout(() => { openModal('welcome-modal', 'welcome-sheet', true); }, 500);
     }
-
-    // Scroll Logic Header
-    const libScroll = document.getElementById('library-content-scroll');
-    if (libScroll && DOM.mainHeader) {
-        libScroll.addEventListener('scroll', () => {
-            if (libScroll.scrollTop > 20) DOM.mainHeader.classList.add('shadow-[0_8px_30px_rgba(0,0,0,0.05)]');
-            else DOM.mainHeader.classList.remove('shadow-[0_8px_30px_rgba(0,0,0,0.05)]');
-        });
-    }
-
-    // Text Selection Event for Native Feel Reader
-    DOM.content.addEventListener('selectionchange', handleTextSelection);
-    document.addEventListener('selectionchange', handleTextSelection);
     
-    // Konfigurasi Typo Default (Reader)
-    applyTypoSettings();
-    
-    // Load config dari LocalStorage
-    setTimeout(() => {
-        const apiKey = localStorage.getItem('gemini_api_key') || '';
-        const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
-        if(document.getElementById('gemini-api-key')) document.getElementById('gemini-api-key').value = apiKey;
-        if(document.getElementById('gemini-model-select')) document.getElementById('gemini-model-select').value = model;
-        
-        // Pengecekan versi PWA otomatis
-        const lastVer = localStorage.getItem('baca_last_version');
-        if(!lastVer || lastVer !== window.APP_VERSION) {
-            localStorage.setItem('baca_last_version', window.APP_VERSION);
-            if(lastVer) showDialog("Aplikasi Diperbarui!", `Baca. telah diperbarui ke versi ${window.APP_VERSION}. Nikmati fitur terbaru dan peningkatan performa.`, "check-circle", [{text: "Tutup", primary: true}]);
-        }
-    }, 500);
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey && document.getElementById('gemini-api-key')) document.getElementById('gemini-api-key').value = savedKey;
+    const savedModel = localStorage.getItem('gemini_model');
+    if(savedModel && document.getElementById('gemini-model-select')) document.getElementById('gemini-model-select').value = savedModel;
 
-    // Initial Back Key Setup
-    window.history.replaceState({page: 'library'}, '');
-    window.addEventListener('popstate', handleHardwareBack);
+    // Update versi app di layar pengaturan
+    const verDisplay = document.getElementById('app-version-display');
+    if (verDisplay && window.APP_VERSION) verDisplay.textContent = `v${window.APP_VERSION}`;
 });
 
+// [FITUR BARU]: Fungsi buat update UI Statistik
+window.updateStatistics = function() {
+    let totalBooks = library.length;
+    let readingBooks = 0;
+    let completedBooks = 0;
+    let totalNotes = 0;
 
-// 2. LIBRARY & RENDER MANAGEMENT
-async function loadLibrary() {
-    try {
-        const data = await localforage.getItem('pdf_epub_master');
-        if (data) {
-            library = data.map(b => ({
-                ...b, progressPct: b.progressPct || 0,
-                annotations: b.annotations || [],
-                shape: b.shape || 'square',
-                isPinned: b.isPinned || false,
-                hasSeparateContent: b.hasSeparateContent || false // Tandai kalau butuh lazy load
-            }));
-        } else {
-            library = [];
-        }
-        renderLibrary();
-    } catch (e) {
-        console.error("Gagal memuat library:", e);
-        library = [];
-    }
-}
-
-function renderLibrary(searchQuery = "") {
-    DOM.grid.innerHTML = ''; DOM.topSlider.innerHTML = ''; DOM.pinnedGrid.innerHTML = '';
-    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
-    
-    document.getElementById('library-count').textContent = `${library.length} ${d.books || 'Buku'}`;
-    
-    if (library.length === 0) { 
-        DOM.empty.classList.remove('hidden'); 
-        DOM.topSection.classList.add('hidden'); 
-        DOM.colHeading.classList.add('hidden');
-        DOM.pinnedSection.classList.add('hidden');
-        if(window.lucide) window.lucide.createIcons();
-        return; 
-    }
-    
-    DOM.empty.classList.add('hidden');
-    let hasRecent = false;
-    let hasPinned = false;
-    let hasRegular = false;
-    
-    // Sort logic
-    const filteredLib = library.filter(b => b.title.toLowerCase().includes(searchQuery));
-    const sortedLib = [...filteredLib].sort((a, b) => b.progressPct - a.progressPct);
-
-    sortedLib.forEach(book => {
-        if (!searchQuery && book.progressPct > 0 && book.progressPct < 100 && !book.isPinned) {
-            DOM.topSlider.appendChild(createBookCard(book, true));
-            hasRecent = true;
-        } else if (book.isPinned) {
-            DOM.pinnedGrid.appendChild(createBookCard(book));
-            hasPinned = true;
-        } else {
-            DOM.grid.appendChild(createBookCard(book));
-            hasRegular = true;
+    library.forEach(book => {
+        let pct = parseInt(book.progressPct) || 0;
+        
+        if (pct > 0 && pct < 100) readingBooks++;
+        else if (pct === 100) completedBooks++;
+        
+        if (book.annotations && Array.isArray(book.annotations)) {
+            totalNotes += book.annotations.length;
         }
     });
 
-    DOM.topSection.classList.toggle('hidden', !hasRecent || !!searchQuery);
-    DOM.pinnedSection.classList.toggle('hidden', !hasPinned);
-    DOM.colHeading.classList.toggle('hidden', !hasRegular && (hasRecent || hasPinned));
+    const valTotal = document.getElementById('stat-val-total');
+    const valReading = document.getElementById('stat-val-reading');
+    const valCompleted = document.getElementById('stat-val-completed');
+    const valNotes = document.getElementById('stat-val-notes');
     
-    if(window.lucide) window.lucide.createIcons();
+    if(valTotal) valTotal.textContent = totalBooks;
+    if(valReading) valReading.textContent = readingBooks;
+    if(valCompleted) valCompleted.textContent = completedBooks;
+    if(valNotes) valNotes.textContent = totalNotes;
+};
+
+// 2. SCROLL & NAVIGATION LISTENERS
+function setupScrollListeners() {
+    const libScroll = document.getElementById('library-content-scroll');
+    if(libScroll && DOM.mainHeader) {
+        libScroll.addEventListener('scroll', () => {
+            if (libScroll.scrollTop > 5) { DOM.mainHeader.classList.add('shadow-[0_2px_10px_rgba(0,0,0,0.05)]'); } 
+            else { DOM.mainHeader.classList.remove('shadow-[0_2px_10px_rgba(0,0,0,0.05)]'); }
+        });
+    }
+
+    let lastScrollTop = 0;
+    if(DOM.readContent) {
+        DOM.readContent.addEventListener('scroll', () => {
+            const bottomBar = document.getElementById('reader-bottom-bar');
+            if (bottomBar && bottomBar.classList.contains('hidden')) return;
+
+            const currentScroll = DOM.readContent.scrollTop;
+            const header = document.getElementById('reader-floating-header');
+            
+            if (currentScroll > lastScrollTop && currentScroll > 50) {
+                header.classList.add('-translate-y-[150%]', 'opacity-0');
+                header.classList.remove('translate-y-0', 'opacity-100');
+            } else {
+                header.classList.remove('-translate-y-[150%]', 'opacity-0');
+                header.classList.add('translate-y-0', 'opacity-100');
+            }
+            lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+        }, { passive: true });
+    }
 }
 
-function createBookCard(book, isSlider = false) {
+function updateBottomNavUI(activeId) {
+    const btns = ['btn-toc', 'btn-bookmarks', 'btn-settings'];
+    btns.forEach(id => {
+        const b = document.getElementById(id);
+        if(b) {
+            b.classList.remove('bg-m3-primary', 'text-m3-onPrimary', 'nav-active');
+            b.classList.add('text-m3-onSurfaceVariant');
+        }
+    });
+    if(activeId) {
+        const act = document.getElementById(activeId);
+        if(act) {
+            act.classList.add('bg-m3-primary', 'text-m3-onPrimary', 'nav-active');
+            act.classList.remove('text-m3-onSurfaceVariant');
+        }
+    }
+}
+
+// 3. HARDWARE BACK BUTTON & HISTORY ROUTING
+window.addEventListener('popstate', (e) => {
+    if (!document.getElementById('raw-backup-modal').classList.contains('opacity-0')) { _closeModalAction('raw-backup-modal', 'raw-backup-sheet', true, true); }
+    else if (!document.getElementById('raw-restore-modal').classList.contains('opacity-0')) { _closeModalAction('raw-restore-modal', 'raw-restore-sheet', true, true); }
+    else if (!document.getElementById('custom-dialog').classList.contains('opacity-0')) { window.closeDialog(true); }
+    else if (!document.getElementById('ai-modal').classList.contains('opacity-0')) { closeAiModal(true); }
+    else if (!document.getElementById('bookmark-modal').classList.contains('opacity-0')) { _closeModalAction('bookmark-modal', 'bookmark-sheet', true, true); }
+    else if (!document.getElementById('b-opt-modal').classList.contains('opacity-0')) { _closeModalAction('b-opt-modal', 'b-opt-sheet', false, true); }
+    else if (!document.getElementById('edit-modal').classList.contains('opacity-0')) { _closeModalAction('edit-modal', 'edit-sheet', true, true); }
+    else if (!document.getElementById('global-settings-modal').classList.contains('opacity-0')) { _closeModalAction('global-settings-modal', 'global-settings-sheet', false, true); }
+    else if (!document.getElementById('welcome-modal').classList.contains('opacity-0')) { closeWelcome(true); }
+    else if (isBatchDeleteMode) { window.toggleBatchDelete(true); }
+    else if (activePanel) { _closeSidePanelsAction(true); } 
+    else if (document.getElementById('search-area').classList.contains('search-active')) { closeSearch(true); }
+    else if (document.getElementById('reader-bottom-bar') && document.getElementById('reader-bottom-bar').classList.contains('hidden')) { window.toggleFullscreenReading(true); }
+    else if (DOM.readView && !DOM.readView.classList.contains('translate-y-full')) { _closeReaderAction(true); }
+});
+
+function pushAppHistory(stateName) { history.pushState({ state: stateName }, '', `#${stateName}`); }
+
+// 4. SEARCH & I18N
+function setupSearchListeners() {
+    const searchArea = document.getElementById('search-area');
+    const searchCapsule = document.querySelector('.search-capsule');
+    
+    document.addEventListener('click', (e) => {
+        if (searchArea && searchArea.classList.contains('search-active') && !searchArea.contains(e.target)) {
+            window.closeSearch(false);
+        }
+    });
+
+    if(DOM.globalSearch) {
+        DOM.globalSearch.addEventListener('focus', () => {
+            if (!searchArea.classList.contains('search-active')) {
+                searchArea.classList.add('search-active');
+                if (window.location.hash !== '#search') pushAppHistory('search');
+            }
+        });
+        DOM.globalSearch.addEventListener('input', (e) => {
+            // [MODIFIKASI] Auto-hide statistik saat search
+            const statSection = document.getElementById('statistics-section');
+            if(statSection) {
+                if(e.target.value.trim().length > 0) {
+                    statSection.style.height = '0px';
+                    statSection.style.opacity = '0';
+                    statSection.style.marginBottom = '0px';
+                } else {
+                    statSection.style.height = '';
+                    statSection.style.opacity = '1';
+                    statSection.style.marginBottom = '';
+                }
+            }
+            renderLibrary(e.target.value);
+        });
+    }
+
+    if(searchCapsule) {
+        searchCapsule.addEventListener('click', (e) => {
+            if (searchArea.classList.contains('search-active')) {
+                if (e.target !== DOM.globalSearch) { window.closeSearch(false); }
+            } else { DOM.globalSearch.focus(); }
+        });
+    }
+}
+
+window.closeSearch = function(fromHistory = false) {
+    const searchArea = document.getElementById('search-area');
+    const statSection = document.getElementById('statistics-section');
+
+    if (searchArea && searchArea.classList.contains('search-active')) {
+        searchArea.classList.remove('search-active');
+        DOM.globalSearch.blur(); DOM.globalSearch.value = ''; 
+        
+        // [MODIFIKASI] Tampilkan kembali statistik saat search ditutup
+        if(statSection) {
+             statSection.style.height = '';
+             statSection.style.opacity = '1';
+             statSection.style.marginBottom = '';
+        }
+
+        renderLibrary();
+        if (!fromHistory && window.location.hash === '#search') history.back();
+    }
+};
+
+const setElementText = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+
+function applyLanguage() {
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
+    if (!Object.keys(d).length) return;
+
+    setElementText('str-lib-empty', d.libEmpty); setElementText('str-continue-reading', d.continueReading);
+    setElementText('str-book-collection', d.bookCollection); setElementText('loading-text', d.loadingDocs);
+    setElementText('btn-batch-cancel', d.cancel); setElementText('btn-batch-exec', d.delete);
+    setElementText('str-opt-select', d.optSelect); setElementText('str-opt-edit', d.optEdit);
+    setElementText('str-opt-delete', d.optDelete); setElementText('str-opt-cancel', d.optCancel);
+    
+    setElementText('str-pinned-books', d.pinnedBooks);
+    setElementText('str-nav-bookmark', d.navBookmark);
+    if (document.getElementById('str-bookmark-title')) { document.getElementById('str-bookmark-title').innerHTML = `<i data-lucide="bookmark"></i> ${d.bookmarkTitle}`; }
+    setElementText('str-bookmark-empty', d.bookmarkEmpty);
+    
+    setElementText('str-bookmark-cancel', d.bookmarkCancel); setElementText('str-bookmark-save', d.bookmarkSave);
+    if (document.getElementById('str-bookmark-modal-title')) { document.getElementById('str-bookmark-modal-title').innerHTML = `<i data-lucide="bookmark" class="w-5 h-5"></i> ${d.bookmarkModalTitle}`; }
+    if (document.getElementById('bookmark-input-title')) document.getElementById('bookmark-input-title').placeholder = d.bookmarkTitlePlaceholder;
+    if (document.getElementById('bookmark-input-text')) document.getElementById('bookmark-input-text').placeholder = d.bookmarkNotePlaceholder;
+    
+    setElementText('str-wel-title', d.welcomeTitle); setElementText('str-wel-desc', d.welcomeDesc);
+    setElementText('str-wel-backup', d.welBackup); 
+    if(document.getElementById('str-wel-backup-desc')) document.getElementById('str-wel-backup-desc').innerHTML = d.welBackupDesc;
+    setElementText('str-wel-format', d.welFormat); 
+    if(document.getElementById('str-wel-format-desc')) document.getElementById('str-wel-format-desc').innerHTML = d.welFormatDesc;
+    setElementText('str-wel-privacy', d.welPrivacy); setElementText('str-wel-privacy-desc', d.welPrivacyDesc);
+    setElementText('str-wel-btn', d.welBtn);
+    
+    setElementText('str-set-main-title', d.setMainTitle); setElementText('str-set-palette', d.setPalette);
+    setElementText('str-set-lang', d.setLang); setElementText('str-set-info', d.setInfo);
+    setElementText('str-set-data', d.setData); setElementText('str-btn-backup', d.btnBackup); setElementText('str-btn-restore', d.btnRestore);
+    setElementText('str-btn-info', d.btnInfo); setElementText('str-btn-donate', d.btnDonate);
+    setElementText('str-btn-close', d.btnClose);
+    
+    setElementText('str-set-ai-config', d.setAiConfig);
+    if(document.getElementById('gemini-api-key')) document.getElementById('gemini-api-key').placeholder = d.geminiPlaceholder;
+    setElementText('gemini-desc', d.geminiDesc);
+    
+    // Teks Cek Update
+    setElementText('str-btn-update', d.btnUpdate);
+
+    setElementText('str-nav-back', d.navBack); setElementText('str-nav-toc', d.navToc);
+    setElementText('str-nav-text', d.navText); setElementText('str-nav-full', d.navFull);
+    setElementText('str-set-search', d.navSearch);
+    
+    setElementText('str-reader-loading', d.readerLoading); setElementText('str-toc-title', d.tocTitle);
+    setElementText('str-set-title', d.setTitle); setElementText('str-set-theme', d.setTheme);
+    setElementText('str-set-size', d.setSize); setElementText('str-set-align', d.setAlign);
+    setElementText('str-set-font', d.setFont);
+    
+    setElementText('str-ai-title', d.aiTitle); setElementText('str-ai-loading', d.aiLoading);
+    
+    setElementText('str-edit-title', d.editTitle); setElementText('str-edit-book-title', d.editBookTitle);
+    setElementText('str-edit-book-cover', d.editBookCover); setElementText('str-edit-book-shape', d.editBookShape);
+    setElementText('str-edit-cancel', d.editCancel); setElementText('str-edit-save', d.editSave);
+    setElementText('str-amoled-label', d.amoledLabel);
+    
+    setElementText('shape-default', d.shapeDyn);
+    setElementText('shape-rounded', d.shapeRound);
+    setElementText('shape-square', d.shapeSquare);
+   
+    setElementText('str-raw-bak-title', d.rawBakTitle); setElementText('str-raw-bak-desc', d.rawBakDesc);
+    setElementText('str-raw-bak-btn-close', d.rawBakClose); setElementText('str-raw-bak-btn-copy', d.rawBakCopy);
+    setElementText('str-raw-res-title', d.rawResTitle); setElementText('str-raw-res-desc', d.rawResDesc);
+    setElementText('str-raw-res-btn-file', d.rawResFile); setElementText('str-raw-res-btn-process', d.rawResProcess);
+    setElementText('str-raw-res-btn-close', d.rawResClose);
+
+    if(DOM.globalSearch) DOM.globalSearch.placeholder = d.searchBooks;
+    if(DOM.searchInput) DOM.searchInput.placeholder = d.searchPlaceholder;
+    if(DOM.count) DOM.count.textContent = `${(library.length)} ${d.booksCount}`;
+    
+    const themeLabel = document.getElementById('theme-label-text');
+    if (themeLabel) themeLabel.textContent = isDark ? d.themeDark : d.themeLight;
+
+    updateBatchSelectionUI();
+
+    // Menerjemahkan Label Statistik
+    setElementText('str-stat-title', d.statTitle || "Statistik");
+    setElementText('str-stat-total', d.statTotal || "Koleksi");
+    setElementText('str-stat-reading', d.statReading || "Dibaca");
+    setElementText('str-stat-completed', d.statCompleted || "Selesai");
+    setElementText('str-stat-notes', d.statNotes || "Catatan");
+}
+
+window.setWikiLang = function(lang) {
+    wikiLang = lang; localStorage.setItem('wiki_lang', lang); syncWikiLangUI(); applyLanguage();
+    if(activeBookId) renderBookmarkPanel(); 
+};
+
+window.saveGeminiModel = function() {
+    const model = document.getElementById('gemini-model-select').value;
+    localStorage.setItem('gemini_model', model);
+};
+
+window.saveGeminiKey = function() {
+    const key = document.getElementById('gemini-api-key').value.trim();
+    localStorage.setItem('gemini_api_key', key);
+    const d = i18n[wikiLang] || i18n['id'];
+    showDialog('Info', d.keySaved || "API Key berhasil disimpan.", 'check-circle', [{text: 'Oke', primary: true}]);
+};
+
+function syncWikiLangUI() {
+    const wid = document.getElementById('wiki-lang-id');
+    const wen = document.getElementById('wiki-lang-en');
+    const wes = document.getElementById('wiki-lang-es');
+    const allBtns = [wid, wen, wes].filter(Boolean);
+    allBtns.forEach(el => { el.classList.remove('bg-m3-primary', 'text-m3-onPrimary'); el.classList.add('text-m3-onSurfaceVariant'); });
+    const active = wikiLang === 'id' ? wid : wikiLang === 'es' ? wes : wen;
+    if (active) { active.classList.add('bg-m3-primary', 'text-m3-onPrimary'); active.classList.remove('text-m3-onSurfaceVariant'); }
+}
+
+// 5. CUSTOM DIALOG & MODALS
+window.showDialog = function(title, message, iconStr, buttons) {
+    pushAppHistory('custom-dialog');
+    const m = document.getElementById('custom-dialog');
+    const s = document.getElementById('custom-dialog-sheet');
+    
+    document.getElementById('dialog-title').innerText = title;
+    document.getElementById('dialog-message').innerText = message;
+    
+    const iconContainer = document.getElementById('dialog-icon-container');
+    if(iconContainer) iconContainer.classList.remove('animate-spin');
+
+    const iconEl = document.getElementById('dialog-icon');
+    if(iconEl) iconEl.setAttribute('data-lucide', iconStr);
+    
+    const actionsContainer = document.getElementById('dialog-actions');
+    actionsContainer.innerHTML = '';
+    
+    buttons.forEach(btn => {
+        const b = document.createElement('button');
+        b.innerText = btn.text;
+        if (btn.primary) {
+            b.className = "px-6 py-2 bg-m3-primary text-m3-onPrimary font-bold rounded-full btn-morph tracking-wide";
+        } else {
+            b.className = "px-4 py-2 bg-transparent text-m3-onSurfaceVariant font-bold rounded-full btn-morph tracking-wide";
+        }
+        b.onclick = () => {
+            if(btn.action) btn.action();
+            else window.closeDialog();
+        };
+        actionsContainer.appendChild(b);
+    });
+    
+    if(window.lucide) window.lucide.createIcons();
+
+    m.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        m.classList.remove('opacity-0');
+        s.classList.remove('scale-75');
+    });
+};
+
+window.closeDialog = function(isFromHistory = false) {
+    if (!isFromHistory) { history.back(); return; }
+    const m = document.getElementById('custom-dialog');
+    const s = document.getElementById('custom-dialog-sheet');
+    
+    s.classList.add('scale-75');
+    m.classList.add('opacity-0');
+    setTimeout(() => m.classList.add('hidden'), 300);
+};
+
+window.openModal = function(modalId, sheetId, isScale = false) {
+    pushAppHistory(`modal-${modalId}`);
+    const m = document.getElementById(modalId); const s = document.getElementById(sheetId);
+    if(m && s) {
+        m.classList.remove('hidden'); 
+        requestAnimationFrame(() => { 
+            m.classList.remove('opacity-0'); 
+            if(isScale) { s.classList.remove('scale-75', 'translate-y-12'); } 
+            else { s.classList.remove('translate-y-full'); } 
+        });
+    }
+}
+
+window._closeModalAction = function(modalId, sheetId, isScale = false, isFromHistory = false) {
+    if (!isFromHistory) { history.back(); return; }
+    const m = document.getElementById(modalId); const s = document.getElementById(sheetId);
+    if(m && s) {
+        if(isScale) { s.classList.add('scale-75', 'translate-y-12'); } 
+        else { s.classList.add('translate-y-full'); }
+        m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
+    }
+}
+
+window.closeWelcome = function(isFromHistory = false) {
+    _closeModalAction('welcome-modal', 'welcome-sheet', true, isFromHistory || (window.location.hash !== '#modal-welcome'));
+    localStorage.setItem('first_time_seen_v5', 'true');
+};
+
+// 6. LOGIKA CEK PEMBARUAN (GITHUB CHECKER)
+function compareVersions(v1, v2) {
+    const p1 = v1.split('.').map(Number);
+    const p2 = v2.split('.').map(Number);
+    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const num1 = p1[i] || 0;
+        const num2 = p2[i] || 0;
+        if (num1 > num2) return 1; // v1 lebih gede
+        if (num1 < num2) return -1; // v2 lebih gede
+    }
+    return 0; // sama
+}
+
+window.checkForUpdate = async function() {
+    const icon = document.getElementById('icon-update-app');
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
+    
+    if(!window.UPDATE_URL) return;
+
+    // Puter icon
+    if(icon) icon.classList.add('animate-spin');
+    
+    try {
+        // Pake parameter ?t buat nembus cache GitHub Raw
+        const res = await fetch(window.UPDATE_URL + '?t=' + new Date().getTime());
+        if (!res.ok) throw new Error("Gagal terhubung ke GitHub");
+        
+        const data = await res.json();
+        const latestVersion = data.version;
+        const currentVersion = window.APP_VERSION;
+
+        if(icon) icon.classList.remove('animate-spin');
+
+        // Komparasi Semver
+        const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+
+        if (isNewer) {
+            showDialog(
+                d.updateAvailableTitle || "Update Tersedia!",
+                (d.updateAvailableDesc || "Versi {v} udah rilis nih. Mau buka halaman download sekarang?").replace('{v}', latestVersion),
+                "arrow-up-circle",
+                [
+                    { text: d.cancel || "Batal", primary: false },
+                    { text: d.btnDownload || "Download", primary: true, action: () => {
+                        window.closeDialog();
+                        if(window.RELEASES_URL) window.open(window.RELEASES_URL, '_blank');
+                    }}
+                ]
+            );
+        } else {
+            showDialog(
+                d.updateLatestTitle || "Sudah Versi Terbaru",
+                d.updateLatestDesc || `Aplikasi lu udah pakai versi paling baru (v${currentVersion}).`,
+                "check-circle",
+                [{ text: "Oke", primary: true }]
+            );
+        }
+    } catch (err) {
+        console.error("Cek update gagal:", err);
+        if(icon) icon.classList.remove('animate-spin');
+        showDialog(
+            "Error",
+            d.updateError || "Gagal ngecek update. Pastiin internet lu nyala.",
+            "wifi-off",
+            [{ text: "Tutup", primary: true }]
+        );
+    }
+};
+
+// 7. BACKUP & RESTORE DATA
+window.exportData = async function() {
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
+    try {
+        const data = await localforage.getItem('pdf_epub_master');
+        if (!data || data.length === 0) {
+            showDialog("Info", d.noBooks || (wikiLang === 'es' ? "No hay libros para respaldar." : wikiLang === 'id' ? "Ga ada buku untuk di-backup." : "No books to backup."), "info", [{ text: "Oke", primary: true }]);
+            return;
+        }
+
+        showDialog(
+            wikiLang === 'es' ? "Procesando copia..." : wikiLang === 'id' ? "Memproses Backup" : "Processing Backup",
+            wikiLang === 'es' ? "Por favor espera, preparando el archivo..." : wikiLang === 'id' ? "Mohon tunggu sebentar, menyiapkan file lu..." : "Please wait, preparing your file...",
+            "loader", 
+            []
+        );
+        
+        const iconContainer = document.getElementById('dialog-icon-container');
+        if(iconContainer) iconContainer.classList.add('animate-spin');
+
+        setTimeout(async () => {
+            try {
+                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+                    const dt = new Date();
+                    const fileName = `Baca_Backup_${dt.getFullYear()}${('0'+(dt.getMonth()+1)).slice(-2)}${('0'+dt.getDate()).slice(-2)}_${dt.getTime()}.json`;
+                    
+                    let displayFileName = fileName;
+                    if (fileName.length > 25) {
+                        displayFileName = fileName.substring(0, 16) + "..." + fileName.slice(-10);
+                    }
+                    
+                    const fullDataStr = JSON.stringify(data);
+                    
+                    try {
+                        await window.Capacitor.Plugins.Filesystem.writeFile({
+                            path: fileName,
+                            data: fullDataStr,
+                            directory: 'DOCUMENTS',
+                            encoding: 'utf8'
+                        });
+                        
+                        showDialog(
+                            wikiLang === 'es' ? "¡Copia exitosa!" : wikiLang === 'id' ? "Backup Sukses" : "Backup Success", 
+                            wikiLang === 'es' ? `Copia guardada en la carpeta Documents.\nArchivo: ${displayFileName}` : wikiLang === 'id' ? `File backup berhasil disimpan di folder Documents HP lu.\nNama file: ${displayFileName}` : `Backup file saved in your device's Documents folder.\nFile name: ${displayFileName}`, 
+                            "check-circle", 
+                            [{ text: "Mantap", primary: true }]
+                        );
+                        return; 
+                    } catch (fsError) {
+                        console.log("Capacitor write gagal, beralih ke teks raw.", fsError);
+                    }
+                }
+                
+                const textOnlyData = data.map(book => {
+                    let strippedBook = { ...book };
+                    delete strippedBook.coverBase64; 
+                    return strippedBook;
+                });
+                
+                const rawStr = JSON.stringify(textOnlyData);
+                document.getElementById('raw-backup-textarea').value = rawStr;
+                
+                window.closeDialog(true);
+                
+                setTimeout(() => {
+                    openModal('raw-backup-modal', 'raw-backup-sheet', true);
+                    
+                    setTimeout(() => {
+                        showDialog("Info Fallback", 
+                            wikiLang === 'es' ? "Error al guardar archivo nativo. Este es el texto sin procesar.\n\nNOTA: Las portadas se eliminaron para evitar errores de memoria. El texto del libro está seguro." : wikiLang === 'id' ? "Simpan file native gagal. Ini adalah teks mentahnya.\n\nCATATAN: Demi menghindari error sistem (ukuran file terlalu besar), data Sampul Buku otomatis DIHAPUS pada versi ini. Data teks buku tetap aman." : "Native file save failed. This is the raw text.\n\nNOTE: To prevent system memory errors, Book Covers are REMOVED in this version. Text data is safe.", 
+                            "info", [{ text: "Mengerti", primary: true }]);
+                    }, 400);
+                }, 350);
+                
+            } catch (err) {
+                console.error("Backup failed:", err);
+                showDialog("Error", "Backup gagal: " + err.message, "alert-triangle", [{ text: "Tutup", primary: true }]);
+            }
+        }, 150);
+
+    } catch (err) {
+        console.error("Backup failed:", err);
+        showDialog("Error", "Backup gagal: " + err.message, "alert-triangle", [{ text: "Tutup", primary: true }]);
+    }
+};
+
+window.copyRawBackup = function() {
+    const textarea = document.getElementById('raw-backup-textarea');
+    textarea.select();
+    textarea.setSelectionRange(0, 9999999); 
+    
+    try {
+        document.execCommand('copy');
+        const btnSpan = document.getElementById('str-raw-bak-btn-copy');
+        const originalText = btnSpan.innerText;
+        btnSpan.innerText = wikiLang === 'es' ? "¡Copiado!" : wikiLang === 'id' ? "Berhasil Disalin!" : "Copied!";
+        setTimeout(() => { btnSpan.innerText = originalText; }, 2000);
+    } catch (err) {
+        showDialog("Error", "Gagal menyalin otomatis. Silakan blok semua teks secara manual dan salin.", "alert-circle", [{ text: "Tutup", primary: true }]);
+    }
+};
+
+window.openRestoreOptions = function() {
+    document.getElementById('raw-restore-textarea').value = '';
+    openModal('raw-restore-modal', 'raw-restore-sheet', true);
+};
+
+window.processRawRestore = function() {
+    const val = document.getElementById('raw-restore-textarea').value.trim();
+    if(!val) {
+        showDialog("Info", wikiLang === 'es' ? "El cuadro de texto está vacío." : wikiLang === 'id' ? "Kotak teks masih kosong." : "Text box is empty.", "info", [{ text: "Oke", primary: true }]);
+        return;
+    }
+    executeRestoreLogic(val);
+};
+
+window.importDataFile = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        executeRestoreLogic(e.target.result);
+        event.target.value = ''; 
+    };
+    reader.readAsText(file);
+};
+
+function executeRestoreLogic(jsonString) {
+    try {
+        const parsedData = JSON.parse(jsonString);
+        if (!Array.isArray(parsedData)) throw new Error("Format file/teks tidak valid.");
+        
+        const isValid = parsedData.every(b => b.id && b.title && b.nodes);
+        if (!isValid) throw new Error("Data backup rusak atau tidak kompatibel.");
+        
+        showDialog(
+            wikiLang === 'es' ? "Confirmar restauración" : wikiLang === 'id' ? "Konfirmasi Restore" : "Confirm Restore",
+            wikiLang === 'es' ? "ADVERTENCIA: Todos los datos actuales serán reemplazados. ¿Continuar?" : wikiLang === 'id' ? "PERINGATAN: Semua data buku saat ini akan ketimpa total. Yakin mau lanjut?" : "WARNING: Current books will be completely replaced. Continue?",
+            "alert-triangle",
+            [
+                { text: "Batal", primary: false },
+                { text: "Lanjut", primary: true, action: async () => {
+                    window.closeDialog();
+                    await localforage.setItem('pdf_epub_master', parsedData);
+                    library = parsedData;
+                    renderLibrary(DOM.globalSearch.value);
+                    
+                    if (!document.getElementById('raw-restore-modal').classList.contains('hidden')) history.back();
+                    setTimeout(() => {
+                        if (!document.getElementById('global-settings-modal').classList.contains('hidden')) history.back();
+                    }, 300);
+                    
+                    setTimeout(() => {
+                        showDialog(
+                            wikiLang === 'es' ? "¡Restauración exitosa!" : wikiLang === 'id' ? "Restore Berhasil!" : "Restore Success!",
+                            wikiLang === 'es' ? "Tus datos han sido restaurados exitosamente." : wikiLang === 'id' ? "Data aplikasi lu udah berhasil dipulihin." : "Your data has been successfully restored.",
+                            "check-circle",
+                            [{ text: "Oke", primary: true }]
+                        );
+                    }, 700);
+                }}
+            ]
+        );
+    } catch (err) {
+        console.error("Restore failed:", err);
+        showDialog("Error", (wikiLang === 'es' ? "Error al restaurar: " : wikiLang === 'id' ? "Gagal memulihkan: " : "Failed to restore: ") + err.message, "alert-circle", [{ text: "Tutup", primary: true }]);
+    }
+}
+
+// 8. LIBRARY & BOOK MANAGEMENT
+async function loadLibrary() { 
+    try { 
+        library = await localforage.getItem('pdf_epub_master') || []; 
+        renderLibrary(); 
+    } catch (e) { console.error(e); } 
+}
+
+function renderLibrary(filterText = "") {
+    if(!DOM.grid || !DOM.topSlider) return;
+    
+    DOM.grid.innerHTML = ''; 
+    DOM.topSlider.innerHTML = '';
+    const pinnedGrid = document.getElementById('pinned-book-grid');
+    if(pinnedGrid) pinnedGrid.innerHTML = '';
+    
+    let filteredLib = library;
+    if(filterText) filteredLib = library.filter(b => b.title.toLowerCase().includes(filterText.toLowerCase()));
+    
+    const d = i18n[wikiLang] || i18n['id'];
+    if(DOM.count) DOM.count.textContent = `${filteredLib.length} ${d.booksCount}`;
+    
+    const pinnedBooks = filteredLib.filter(b => b.isPinned);
+    const regularBooks = filteredLib.filter(b => !b.isPinned);
+
+    let topBooks = [];
+    if (!filterText) { topBooks = library.filter(b => b.progressPct > 0).sort((a,b) => b.progressPct - a.progressPct).slice(0, 4); }
+    if (topBooks.length > 0) {
+        DOM.topSection.classList.remove('hidden');
+        topBooks.forEach((book, idx) => { DOM.topSlider.appendChild(createBookCard(book, true, idx)); });
+        const spacer = document.createElement('div'); spacer.className = "w-2 shrink-0 snap-align-none"; DOM.topSlider.appendChild(spacer);
+    } else { DOM.topSection.classList.add('hidden'); }
+    
+    const pinnedSection = document.getElementById('pinned-books-section');
+    if (pinnedBooks.length > 0) {
+        if(pinnedSection) pinnedSection.classList.remove('hidden');
+        pinnedBooks.forEach((book, idx) => { if(pinnedGrid) pinnedGrid.appendChild(createBookCard(book, false, idx)); });
+    } else {
+        if(pinnedSection) pinnedSection.classList.add('hidden');
+    }
+
+    if (regularBooks.length === 0) { 
+        DOM.empty.classList.remove('hidden'); DOM.grid.classList.add('hidden'); 
+        if(document.getElementById('collection-heading')) document.getElementById('collection-heading').classList.add('hidden');
+    } else {
+        DOM.empty.classList.add('hidden'); DOM.grid.classList.remove('hidden');
+        if(document.getElementById('collection-heading')) document.getElementById('collection-heading').classList.remove('hidden');
+        regularBooks.forEach((book, index) => { DOM.grid.appendChild(createBookCard(book, false, index)); });
+    }
+
+    updateStatistics(); // PANGGIL STATISTIK SETIAP LIBRARY SELESAI RENDER
+    
+    if(window.lucide) window.lucide.createIcons();
+    window.updateBatchSelectionUI();
+}
+
+function createBookCard(book, isSlider = false, index = 0) {
+    const progress = book.progressPct || 0; 
     const card = document.createElement('div');
-    const bType = book.type.toUpperCase();
     
-    let shapeClass = "aspect-[2/3] rounded-[20px]";
-    if (book.shape === 'default') shapeClass = "aspect-auto h-48 rounded-[20px]";
-    else if (book.shape === 'rounded') shapeClass = "aspect-[2/3] rounded-full";
+    let shapeClass = "";
+    let shp = book.shape || 'square';
+    if (shp === 'rounded') shapeClass = 'rounded-[24px]';
+    else if (shp === 'square') shapeClass = 'rounded-xl';
+    else shapeClass = index % 2 === 0 ? 'rounded-tl-[32px] rounded-br-[32px] rounded-tr-lg rounded-bl-lg' : 'rounded-tr-[32px] rounded-bl-[32px] rounded-tl-lg rounded-br-lg';
+
+    let bgStyle = ""; let textOverlay = ""; let baseClass = "";
+    if(book.coverBase64) {
+        bgStyle = `background-image: url('${book.coverBase64}'); background-size: cover; background-position: top center;`;
+        baseClass = "text-white border-none outline-none ring-0 shadow-lg"; 
+        textOverlay = `<div class="absolute inset-x-0 bottom-0 h-[80%] bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-0 rounded-b-inherit border-none outline-none"></div>`;
+    } else {
+        const colors = [
+            'bg-m3-primaryContainer text-m3-onPrimaryContainer', 
+            'bg-m3-secondaryContainer text-m3-onSecondaryContainer', 
+            'bg-m3-tertiaryContainer text-m3-onTertiaryContainer',
+            'bg-m3-surfaceVariant text-m3-onSurfaceVariant'
+        ];
+        baseClass = colors[index % colors.length];
+    }
+
+    const dimensionClass = isSlider ? "w-64 h-40 shrink-0 snap-start" : "aspect-[3/4.5] w-full shadow-md hover:shadow-xl transition-shadow";
+
+    let pressTimer = null; let isPressing = false; let hasLongPressed = false;
+    const handleStart = (e) => {
+        if (isBatchDeleteMode) return;
+        isPressing = true; hasLongPressed = false;
+        pressTimer = setTimeout(() => { if (isPressing) { hasLongPressed = true; window.openBookOptions(book.id); } }, 400);
+    };
+    const handleEnd = () => { isPressing = false; clearTimeout(pressTimer); };
+    const handleMove = () => { isPressing = false; clearTimeout(pressTimer); };
+
+    card.addEventListener('mousedown', handleStart); card.addEventListener('touchstart', handleStart, {passive: true});
+    card.addEventListener('mouseup', handleEnd); card.addEventListener('touchend', handleEnd);
+    card.addEventListener('mouseleave', handleMove); card.addEventListener('touchmove', handleMove, {passive: true});
     
+    card.addEventListener('click', (e) => { 
+        if (hasLongPressed) { e.preventDefault(); e.stopPropagation(); return; } 
+        if (isBatchDeleteMode && !isSlider) {
+            e.preventDefault(); e.stopPropagation();
+            const strId = String(book.id);
+            const idx = selectedForDelete.findIndex(id => String(id) === strId);
+            if (idx > -1) {
+                selectedForDelete.splice(idx, 1);
+            } else {
+                selectedForDelete.push(strId);
+            }
+            window.updateBatchSelectionUI();
+            return;
+        }
+        window.openBook(book); 
+    });
+
+    card.className = `${baseClass} ${shapeClass} ${dimensionClass} p-4 relative cursor-pointer card-morph flex flex-col justify-between overflow-hidden border-none outline-none ring-0`;
+    card.style = bgStyle;
+
+    let batchOverlayHTML = '';
+    if (!isSlider) {
+        batchOverlayHTML = `
+            <div class="batch-overlay absolute inset-0 z-20 transition-all duration-300 pointer-events-none rounded-inherit" data-book-id="${book.id}" style="display: none; opacity: 0; background-color: transparent;">
+                <div class="batch-icon-box absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center transition-colors"></div>
+            </div>
+        `;
+    }
+
+    const titleShadow = book.coverBase64 ? 'text-white' : '';
+    const barBase = book.coverBase64 ? 'bg-white' : 'bg-m3-primary dark:bg-m3-primaryContainer';
+
+    let indicators = '';
+    if(!isSlider) {
+        if(book.isPinned) indicators += `<i data-lucide="pin" class="w-3.5 h-3.5 opacity-90 fill-current"></i>`;
+    }
+
     if (isSlider) {
-        card.className = "flex-none w-36 snap-start card-morph cursor-pointer relative group isolate";
-        
-        let cvr = `<div class="${shapeClass} w-full bg-m3-surfaceVariant flex items-center justify-center mb-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden transition-shadow group-hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)]">`;
-        if(book.coverBase64) cvr += `<img src="${book.coverBase64}" class="w-full h-full object-cover">`;
-        else cvr += `<span class="text-m3-onSurfaceVariant/40 font-bold tracking-widest text-lg">${bType}</span>`;
-        cvr += `</div>`;
-        
         card.innerHTML = `
-            ${cvr}
-            <div class="px-1">
-                <h3 class="font-bold text-sm truncate text-m3-onBg mb-1">${book.title}</h3>
-                <div class="flex items-center gap-2">
-                    <div class="flex-1 h-1.5 bg-m3-surfaceVariant rounded-full overflow-hidden">
-                        <div class="h-full bg-m3-primary rounded-full" style="width: ${book.progressPct}%"></div>
+            ${textOverlay}
+            <div class="relative z-10 flex flex-col h-full justify-between pointer-events-none border-none">
+                <div class="flex justify-between w-full items-start">
+                    <span class="inline-block text-[0.65rem] font-bold px-2 py-0.5 bg-black/40 rounded-full text-white uppercase tracking-widest">${book.type}</span>
+                </div>
+                <div class="mt-auto flex flex-col border-none">
+                    <h3 class="font-bold text-sm leading-tight line-clamp-2 drop-shadow-md ${titleShadow}">${book.title}</h3>
+                    <div class="w-full mt-2 border-none">
+                        <div class="flex justify-between text-[0.65rem] font-bold opacity-90 mb-1 ${titleShadow}"><span>${progress}%</span></div>
+                        <div class="h-1.5 w-full bg-black/20 dark:bg-white/20 rounded-full overflow-hidden border-none">
+                            <div class="h-full ${barBase} rounded-full border-none" style="width: ${progress}%"></div>
+                        </div>
                     </div>
-                    <span class="text-[10px] font-bold text-m3-onSurfaceVariant/80 w-6 text-right">${book.progressPct}%</span>
                 </div>
             </div>
         `;
     } else {
-        card.className = "card-morph cursor-pointer relative group isolate flex flex-col items-center select-none";
-        card.setAttribute('data-id', book.id);
-        
-        let cvr = `<div class="${shapeClass} w-full bg-m3-surfaceVariant flex items-center justify-center mb-3 shadow-md overflow-hidden relative pointer-events-none transition-shadow group-hover:shadow-lg">`;
-        if(book.coverBase64) cvr += `<img src="${book.coverBase64}" class="w-full h-full object-cover">`;
-        else cvr += `<span class="text-m3-onSurfaceVariant/40 font-bold tracking-widest text-sm">${bType}</span>`;
-        
-        cvr += `<div class="absolute top-2 right-2 flex gap-1 pointer-events-auto">`;
-        if (book.isPinned) {
-            cvr += `<div class="w-6 h-6 rounded-full bg-m3-primary/90 backdrop-blur-sm flex items-center justify-center text-m3-onPrimary shadow-sm"><i data-lucide="pin" class="w-3 h-3 fill-current"></i></div>`;
-        }
-        cvr += `<button onclick="event.stopPropagation(); openBookOptions('${book.id}')" class="w-6 h-6 rounded-full bg-m3-surfaceVariant/90 backdrop-blur-sm flex items-center justify-center text-m3-onSurfaceVariant btn-morph shadow-sm"><i data-lucide="more-vertical" class="w-3 h-3 pointer-events-none"></i></button>`;
-        cvr += `</div></div>`;
-        
         card.innerHTML = `
-            ${cvr}
-            <div class="w-full px-1 pointer-events-none">
-                <h3 class="font-bold text-[11px] leading-tight text-m3-onBg line-clamp-2 text-center">${book.title}</h3>
+            ${batchOverlayHTML}
+            ${textOverlay}
+            <div class="relative z-10 flex flex-col h-full justify-between pointer-events-none border-none">
+                <div class="flex justify-end w-full gap-1 drop-shadow-md ${titleShadow}">${indicators}</div>
+                <div class="mt-auto flex flex-col border-none">
+                    ${book.coverBase64 ? '' : '<i data-lucide="book" class="w-6 h-6 mb-2 opacity-80"></i>'}
+                    <h3 class="font-bold text-sm leading-tight mt-1 line-clamp-3 drop-shadow-md ${titleShadow}">${book.title}</h3>
+                    <span class="inline-block mt-2 mb-2 text-[0.6rem] font-bold px-2 py-0.5 bg-black/40 rounded-full text-white uppercase tracking-widest self-start">${book.type}</span>
+                    <div class="w-full border-none">
+                        <div class="flex justify-between text-[0.6rem] font-bold opacity-90 mb-1 ${titleShadow}">
+                            <span>${progress}%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-black/20 dark:bg-white/20 rounded-full overflow-hidden border-none">
+                            <div class="h-full ${barBase} rounded-full border-none" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="absolute inset-0 bg-m3-primary/20 rounded-[20px] opacity-0 transition-opacity pointer-events-none border-2 border-m3-primary" id="sel-${book.id}"></div>
         `;
     }
-
-    card.onclick = () => {
-        if(isBatchDeleteMode) toggleSelectBook(book.id);
-        else openBook(book.id);
-    };
-    
-    let pressTimer;
-    card.addEventListener('touchstart', (e) => {
-        if(!isBatchDeleteMode && !isSlider) { pressTimer = setTimeout(() => { event.preventDefault(); openBookOptions(book.id); }, 600); }
-    }, {passive: false});
-    card.addEventListener('touchend', () => { clearTimeout(pressTimer); });
-    card.addEventListener('touchmove', () => { clearTimeout(pressTimer); });
-    card.addEventListener('contextmenu', (e) => { 
-        if(!isSlider) { e.preventDefault(); openBookOptions(book.id); }
-    });
-
     return card;
 }
 
-
-// 3. BOOK OPTIONS & BATCH MODE
-function openBookOptions(id) {
-    activeOptsId = id;
-    const book = library.find(b => b.id === id);
-    if(!book) return;
-    
+window.openBookOptions = function(id) {
+    activeOptsId = id; const book = library.find(b => b.id === id);
     document.getElementById('opt-title').textContent = book.title;
-    
-    const pinBtn = document.getElementById('str-opt-pin');
+
+    const d = i18n[wikiLang] || i18n['id'];
     const pinIcon = document.getElementById('icon-opt-pin');
-    if (book.isPinned) {
-        pinBtn.textContent = typeof i18n !== 'undefined' ? (i18n[wikiLang]?.optUnpin || "Lepas Sematan") : "Lepas Sematan";
+    const pinText = document.getElementById('str-opt-pin');
+
+    if(book.isPinned) {
+        pinText.textContent = d.optUnpin || 'Lepas Sematan';
         pinIcon.setAttribute('data-lucide', 'pin-off');
     } else {
-        pinBtn.textContent = typeof i18n !== 'undefined' ? (i18n[wikiLang]?.optPin || "Sematkan Buku") : "Sematkan Buku";
+        pinText.textContent = d.optPin || 'Sematkan Buku';
         pinIcon.setAttribute('data-lucide', 'pin');
     }
-    if(window.lucide) window.lucide.createIcons();
 
-    pushAppHistory('b-opt-modal');
-    openModalRaw('b-opt-modal', 'b-opt-sheet');
+    if(window.lucide) window.lucide.createIcons();
+    openModal('b-opt-modal', 'b-opt-sheet', false); 
 }
 
 window.togglePinBook = async function() {
-    const idx = library.findIndex(b => b.id === activeOptsId);
-    if(idx > -1) {
-        library[idx].isPinned = !library[idx].isPinned;
+    if(!activeOptsId) return;
+    const bookIndex = library.findIndex(b => b.id === activeOptsId);
+    if(bookIndex > -1) {
+        library[bookIndex].isPinned = !library[bookIndex].isPinned;
         await localforage.setItem('pdf_epub_master', library);
-        renderLibrary();
+        history.back(); 
+        setTimeout(() => renderLibrary(DOM.globalSearch ? DOM.globalSearch.value : ""), 300);
     }
-    history.back();
 }
 
+window.triggerSelectMode = function() {
+    if(!activeOptsId) return;
+    const targetId = activeOptsId;
+    history.back(); 
+    setTimeout(() => { window.toggleBatchDelete(false, targetId); }, 350); 
+}
+
+window.toggleBatchDelete = function(isFromHistory = false, initialSelectId = null) {
+    if(library.length === 0 && !isBatchDeleteMode) return;
+    isBatchDeleteMode = !isBatchDeleteMode;
+    
+    if (!isBatchDeleteMode) { selectedForDelete = []; } 
+    else {
+        selectedForDelete = [];
+        if (initialSelectId) selectedForDelete.push(String(initialSelectId));
+    }
+    
+    const bar = document.getElementById('batch-delete-bar');
+    const fab = document.getElementById('fab-container');
+    
+    if (isBatchDeleteMode) {
+        if(!isFromHistory) pushAppHistory('batch-delete');
+        bar.classList.remove('translate-y-32');
+        fab.classList.add('translate-y-32', 'opacity-0');
+    } else {
+        if(!isFromHistory && window.location.hash === '#batch-delete') history.back();
+        bar.classList.add('translate-y-32');
+        fab.classList.remove('translate-y-32', 'opacity-0');
+    }
+    
+    window.updateBatchSelectionUI();
+};
+
+window.updateBatchSelectionUI = function() {
+    const countEl = document.getElementById('batch-delete-count');
+    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
+    if(countEl) countEl.textContent = `${selectedForDelete.length} ${d.selected || 'Selected'}`;
+
+    document.querySelectorAll('.batch-overlay').forEach(el => {
+        const id = String(el.dataset.bookId);
+        const idx = selectedForDelete.findIndex(selId => String(selId) === id);
+        const icBox = el.querySelector('.batch-icon-box');
+        
+        if (isBatchDeleteMode) {
+            el.style.display = 'block';
+            if (idx > -1) {
+                el.style.opacity = '1';
+                el.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+                icBox.className = 'batch-icon-box absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center transition-colors bg-m3-primary text-m3-onPrimary font-bold text-xs shadow-md border-none';
+                icBox.innerHTML = (idx + 1);
+            } else {
+                el.style.opacity = '1';
+                el.style.backgroundColor = 'transparent';
+                icBox.className = 'batch-icon-box absolute top-3 left-3 w-7 h-7 rounded-full border-2 border-white/50 flex items-center justify-center transition-colors bg-black/20 shadow-sm font-bold text-xs text-transparent';
+                icBox.innerHTML = '';
+            }
+        } else {
+            el.style.opacity = '0';
+            setTimeout(() => el.style.display = 'none', 300);
+        }
+    });
+};
+
+window.executeBatchDelete = async function() {
+    if(selectedForDelete.length === 0) return;
+    const d = i18n[wikiLang] || i18n['id'];
+    
+    showDialog("Hapus Buku", d.deleteConfirm, "trash-2", [
+        { text: "Batal", primary: false },
+        { text: "Hapus", primary: true, action: async () => {
+            window.closeDialog();
+            const toDeleteSet = new Set(selectedForDelete.map(String));
+            library = library.filter(b => !toDeleteSet.has(String(b.id)));
+            await localforage.setItem('pdf_epub_master', library);
+            window.toggleBatchDelete(); 
+            renderLibrary(DOM.globalSearch ? DOM.globalSearch.value : ""); 
+        }}
+    ]);
+};
+
+window.triggerDeleteView = async function() {
+    if(!activeOptsId) return;
+    const d = i18n[wikiLang] || i18n['id'];
+    showDialog("Hapus Permanen", d.deleteConfirm, "trash-2", [
+        { text: "Batal", primary: false },
+        { text: "Hapus", primary: true, action: async () => {
+            window.closeDialog();
+            library = library.filter(b => !selectedForDelete.includes(b.id) && b.id !== activeOptsId); 
+            await localforage.setItem('pdf_epub_master', library); 
+            history.back(); setTimeout(() => renderLibrary(DOM.globalSearch ? DOM.globalSearch.value : ""), 350);
+        }}
+    ]);
+};
+
 window.triggerEditView = function() {
-    history.back();
-    setTimeout(() => {
-        const book = library.find(b => b.id === activeOptsId);
-        if(!book) return;
-        document.getElementById('edit-book-id').value = book.id;
-        document.getElementById('edit-book-title').value = book.title;
-        selectShape(book.shape || 'square');
-        document.getElementById('edit-book-cover').value = ""; // Reset file input
-        pushAppHistory('edit-modal');
-        openModalRaw('edit-modal', 'edit-sheet');
-    }, 350);
+    if(!activeOptsId) return;
+    const book = library.find(b => b.id === activeOptsId);
+    document.getElementById('edit-book-id').value = activeOptsId; 
+    document.getElementById('edit-book-title').value = book.title; 
+    document.getElementById('edit-book-cover').value = '';
+    
+    window.selectShape(book.shape || 'square');
+    history.back(); setTimeout(() => { openModal('edit-modal', 'edit-sheet', true); }, 400); 
 }
 
 window.selectShape = function(shape) {
     document.getElementById('edit-book-shape').value = shape;
-    ['default', 'rounded', 'square'].forEach(s => {
-        const btn = document.getElementById(`shape-${s}`);
-        if(s === shape) {
-            btn.classList.add('bg-m3-primary', 'text-m3-onPrimary');
-            btn.classList.remove('bg-m3-surfaceVariant', 'text-m3-onSurfaceVariant');
-        } else {
-            btn.classList.remove('bg-m3-primary', 'text-m3-onPrimary');
-            btn.classList.add('bg-m3-surfaceVariant', 'text-m3-onSurfaceVariant');
+    const btns = document.querySelectorAll('#edit-sheet .btn-morph');
+    btns.forEach(b => {
+        if(b.id && b.id.startsWith('shape-')) {
+            b.classList.remove('bg-m3-primaryContainer', 'text-m3-onPrimaryContainer');
+            b.classList.add('bg-m3-surfaceVariant', 'text-m3-onSurfaceVariant');
         }
     });
+    const sel = document.getElementById('shape-' + shape);
+    if(sel) {
+        sel.classList.remove('bg-m3-surfaceVariant', 'text-m3-onSurfaceVariant');
+        sel.classList.add('bg-m3-primaryContainer', 'text-m3-onPrimaryContainer');
+    }
 }
+
+window.closeEditModal = function() { history.back(); }
 
 window.saveBookEdit = async function() {
-    const id = document.getElementById('edit-book-id').value;
-    const title = document.getElementById('edit-book-title').value;
-    const shape = document.getElementById('edit-book-shape').value;
-    const fileInput = document.getElementById('edit-book-cover');
+    const id = document.getElementById('edit-book-id').value; 
+    const newTitle = document.getElementById('edit-book-title').value; 
+    const coverFile = document.getElementById('edit-book-cover').files[0];
+    const newShape = document.getElementById('edit-book-shape').value;
+    const bookIndex = library.findIndex(b => b.id === id);
     
-    const idx = library.findIndex(b => b.id === id);
-    if(idx > -1) {
-        library[idx].title = title;
-        library[idx].shape = shape;
-        
-        if (fileInput.files && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const b64 = e.target.result;
-                if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-                    try {
-                        const fs = window.Capacitor.Plugins.Filesystem;
-                        const base64Str = b64.split(',')[1];
-                        const filename = `custom_cover_${id}_${Date.now()}.jpeg`;
-                        await fs.writeFile({ path: filename, data: base64Str, directory: 'DATA' });
-                        const stat = await fs.getUri({ directory: 'DATA', path: filename });
-                        library[idx].coverBase64 = window.Capacitor.convertFileSrc(stat.uri);
-                    } catch (err) {
-                        library[idx].coverBase64 = b64;
-                    }
-                } else {
-                    library[idx].coverBase64 = b64;
-                }
-                finishEdit();
-            };
-            reader.readAsDataURL(file);
-        } else {
-            finishEdit();
+    if(bookIndex > -1) {
+        library[bookIndex].title = newTitle; library[bookIndex].shape = newShape;
+        if (coverFile) { 
+            const reader = new FileReader(); 
+            reader.onload = async function(e) { 
+                library[bookIndex].coverBase64 = e.target.result; await localforage.setItem('pdf_epub_master', library); 
+                history.back(); renderLibrary(); 
+            }; 
+            reader.readAsDataURL(coverFile); 
+        } else { await localforage.setItem('pdf_epub_master', library); history.back(); renderLibrary(); }
+    }
+}
+
+// 9. TEMA & TIPOGRAFI
+function applyThemeToDOM() {
+    document.documentElement.classList.toggle('dark', isDark);
+    
+    if(typeof M3_PALETTES !== 'undefined') {
+        let rootVars = M3_PALETTES[currentThemeKey][isDark ? 'dark' : 'light'];
+        if (isDark && isAmoled) {
+            rootVars += `--md-sys-color-background:#000000;--md-sys-color-surface:#000000;`;
         }
+        const dynamicTheme = document.getElementById('dynamic-theme');
+        if(dynamicTheme) dynamicTheme.innerHTML = `:root { ${rootVars} }`;
     }
     
-    async function finishEdit() {
-        await localforage.setItem('pdf_epub_master', library);
-        renderLibrary();
-        history.back();
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if(metaTheme) {
+        if(isDark && isAmoled) metaTheme.setAttribute("content", "#000000");
+        else if (isDark) metaTheme.setAttribute("content", "#0B0314");
+        else metaTheme.setAttribute("content", "#FAF5FF");
     }
-}
 
-window.triggerDeleteView = function() {
-    history.back();
-    setTimeout(() => {
-        showDialog("Hapus Buku?", "Aksi ini tidak bisa dibatalkan.", "trash-2", [
-            { text: "Batal" },
-            { text: "Hapus", danger: true, action: async () => {
-                const book = library.find(b => b.id === activeOptsId);
-                library = library.filter(b => b.id !== activeOptsId);
-                if (book && book.hasSeparateContent) {
-                    await localforage.removeItem(`book_content_${activeOptsId}`);
-                }
-                await localforage.setItem('pdf_epub_master', library);
-                renderLibrary();
-            }}
-        ]);
-    }, 350);
-}
-
-// --- BATCH DELETE LOGIC ---
-window.triggerSelectMode = function() {
-    history.back();
-    setTimeout(() => {
-        isBatchDeleteMode = true;
-        selectedForDelete = [activeOptsId];
-        document.getElementById('fab-container').classList.add('translate-y-32');
-        document.getElementById('batch-delete-bar').classList.remove('translate-y-32');
-        updateBatchUI();
-    }, 350);
-}
-
-window.toggleSelectBook = function(id) {
-    if(selectedForDelete.includes(id)) selectedForDelete = selectedForDelete.filter(i => i !== id);
-    else selectedForDelete.push(id);
-    updateBatchUI();
-}
-
-function updateBatchUI() {
-    document.querySelectorAll('[id^="sel-"]').forEach(el => el.classList.remove('opacity-100'));
-    selectedForDelete.forEach(id => {
-        const el = document.getElementById(`sel-${id}`);
-        if(el) el.classList.add('opacity-100');
-    });
+    const bg = document.getElementById('theme-switch-bg');
+    const knob = document.getElementById('theme-switch-knob');
+    const icon = document.getElementById('theme-switch-icon');
+    const dLabel = document.getElementById('theme-label-text');
     const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
-    document.getElementById('batch-delete-count').textContent = `${selectedForDelete.length} ${d.selected || 'Terpilih'}`;
-}
-
-window.toggleBatchDelete = function() {
-    isBatchDeleteMode = false;
-    selectedForDelete = [];
-    document.querySelectorAll('[id^="sel-"]').forEach(el => el.classList.remove('opacity-100'));
-    document.getElementById('fab-container').classList.remove('translate-y-32');
-    document.getElementById('batch-delete-bar').classList.add('translate-y-32');
-}
-
-window.executeBatchDelete = function() {
-    if(selectedForDelete.length === 0) return;
-    showDialog("Hapus Buku Terpilih?", `Yakin hapus ${selectedForDelete.length} buku?`, "trash-2", [
-        { text: "Batal" },
-        { text: "Hapus", danger: true, action: async () => {
-            for (let id of selectedForDelete) {
-                const book = library.find(b => b.id === id);
-                if (book && book.hasSeparateContent) await localforage.removeItem(`book_content_${id}`);
-            }
-            library = library.filter(b => !selectedForDelete.includes(b.id));
-            await localforage.setItem('pdf_epub_master', library);
-            toggleBatchDelete();
-            renderLibrary();
-        }}
-    ]);
-}
-
-// 4. READER ENGINE & OPTIMIZED LAZY LOAD
-window.currentBookNodes = null; // Menyimpan cache node mentah saat buku terbuka
-
-async function openBook(id) {
-    const book = library.find(b => b.id === id); 
-    if (!book) return;
-    activeBookId = id; 
     
-    // UI Transisi Masuk
-    DOM.title.textContent = book.title; 
-    DOM.inner.innerHTML = ''; DOM.tocList.innerHTML = ''; 
-    DOM.readView.classList.remove('translate-y-full'); 
-    DOM.libView.classList.add('-translate-y-20', 'opacity-0');
-    
-    document.getElementById('reader-floating-header').classList.remove('opacity-0', '-translate-y-full');
-    
-    const loadingOverlay = document.getElementById('reader-loading-overlay');
-    loadingOverlay.classList.remove('hidden');
-    
-    requestAnimationFrame(() => { loadingOverlay.classList.remove('opacity-0'); });
-
-    // LAZY LOAD Teks (Perbaikan Phase 5)
-    setTimeout(async () => {
-        let nodesToRender = book.nodes; 
-        
-        if (book.hasSeparateContent) {
-            try {
-                nodesToRender = await localforage.getItem(`book_content_${book.id}`);
-            } catch (e) {
-                console.error("Gagal load isi buku:", e);
-                nodesToRender = null;
-            }
-        }
-        
-        if (!nodesToRender || nodesToRender.length === 0) {
-            showDialog("Error", "Gagal memuat isi buku. File mungkin rusak/terhapus.", "alert-triangle", [{text:"Tutup", primary:true, action: () => history.back()}]);
-            loadingOverlay.classList.add('opacity-0');
-            setTimeout(() => loadingOverlay.classList.add('hidden'), 300);
-            return;
-        }
-
-        window.currentBookNodes = nodesToRender; // Cache ke global memory saat dibaca
-
-        // Render Fragment (Minimalisir Reflow DOM)
-        const fragment = document.createDocumentFragment(); 
-        const annots = book.annotations || [];
-        
-        nodesToRender.forEach((node, idx) => {
-            const el = document.createElement(node.tag === 'img' ? 'div' : node.tag);
-            el.id = `node-${idx}`;
-            
-            if (node.tag === 'img') {
-                el.className = 'w-full flex justify-center my-6';
-                const img = document.createElement('img'); 
-                img.src = node.src; 
-                img.className = 'max-w-full rounded-2xl shadow-sm max-h-[60vh] object-contain bg-m3-surfaceVariant';
-                img.loading = "lazy";
-                el.appendChild(img);
-            } else {
-                const nodeAnnots = annots.filter(a => a.nodeIdx === idx);
-                el.innerHTML = renderNodeText(node.text, nodeAnnots);
-                
-                if (node.tag === 'h1' || node.tag === 'h2') {
-                    const tocItem = document.createElement('button');
-                    tocItem.className = `text-left p-3 hover:bg-m3-surface rounded-2xl transition-colors font-bold ${node.tag==='h1'?'text-m3-primary text-sm':'text-m3-onSurfaceVariant text-xs pl-6'}`;
-                    tocItem.textContent = node.text;
-                    tocItem.onclick = () => { el.scrollIntoView({behavior: 'smooth'}); closeAllPanels(); };
-                    DOM.tocList.appendChild(tocItem);
-                }
-            }
-            fragment.appendChild(el);
-        });
-        
-        DOM.inner.appendChild(fragment);
-
-        loadingOverlay.classList.add('opacity-0');
-        setTimeout(() => { loadingOverlay.classList.add('hidden'); }, 300);
-        
-        renderBookmarkList();
-        
-        // Pulihkan Posisi Baca
-        if (book.lastReadId) { 
-            const target = document.getElementById(book.lastReadId); 
-            if(target) setTimeout(() => { target.scrollIntoView({behavior: 'auto', block: 'center'}); }, 100); 
+    if (bg && knob && icon && dLabel) {
+        dLabel.textContent = isDark ? d.themeDark : d.themeLight;
+        if (isDark) {
+            bg.classList.replace('bg-m3-onSurfaceVariant/20', 'bg-m3-primary');
+            knob.classList.add('translate-x-[32px]');
+            icon.setAttribute('data-lucide', 'moon');
+            icon.classList.replace('text-m3-onSurface', 'text-m3-primary');
         } else {
-            DOM.content.scrollTop = 0;
+            bg.classList.replace('bg-m3-primary', 'bg-m3-onSurfaceVariant/20');
+            knob.classList.remove('translate-x-[32px]');
+            icon.setAttribute('data-lucide', 'sun');
+            icon.classList.replace('text-m3-primary', 'text-m3-onSurface');
         }
+    }
+
+    const amoContainer = document.getElementById('amoled-toggle-container');
+    const amoBg = document.getElementById('amoled-switch-bg');
+    const amoKnob = document.getElementById('amoled-switch-knob');
+    if (isDark) {
+        if (amoContainer) amoContainer.classList.remove('hidden');
+        if (isAmoled && amoBg && amoKnob) {
+            amoBg.classList.add('bg-m3-primary');
+            amoKnob.classList.add('translate-x-[32px]');
+            amoKnob.classList.replace('bg-m3-onSurface', 'bg-m3-onPrimary');
+        } else if (amoBg && amoKnob) {
+            amoBg.classList.remove('bg-m3-primary');
+            amoKnob.classList.remove('translate-x-[32px]');
+            amoKnob.classList.replace('bg-m3-onPrimary', 'bg-m3-onSurface');
+        }
+    } else {
+        if (amoContainer) amoContainer.classList.add('hidden');
+    }
+
+    const tl = document.getElementById('theme-btn-light');
+    const td = document.getElementById('theme-btn-dark');
+    const ta = document.getElementById('theme-btn-amoled');
+    if (tl && td && ta) {
+        [tl, td, ta].forEach(el => {
+            el.classList.remove('bg-m3-primary', 'text-m3-onPrimary');
+            el.classList.add('text-m3-onSurfaceVariant');
+        });
+        if (!isDark) { tl.classList.add('bg-m3-primary', 'text-m3-onPrimary'); tl.classList.remove('text-m3-onSurfaceVariant'); }
+        else if (isDark && !isAmoled) { td.classList.add('bg-m3-primary', 'text-m3-onPrimary'); td.classList.remove('text-m3-onSurfaceVariant'); }
+        else if (isDark && isAmoled) { ta.classList.add('bg-m3-primary', 'text-m3-onPrimary'); ta.classList.remove('text-m3-onSurfaceVariant'); }
+    }
+
+    if(window.lucide) window.lucide.createIcons();
+    localStorage.setItem('theme', isDark ? 'dark' : 'light'); 
+    localStorage.setItem('m3-key', currentThemeKey);
+    localStorage.setItem('amoled', isAmoled);
+}
+
+window.setTheme = function(key) { currentThemeKey = key; applyThemeToDOM(); };
+window.toggleThemeState = function() { isDark = !isDark; applyThemeToDOM(); };
+window.toggleAmoled = function() { isAmoled = !isAmoled; applyThemeToDOM(); };
+window.setReaderTheme = function(mode) {
+    if (mode === 'light') { isDark = false; isAmoled = false; }
+    else if (mode === 'dark') { isDark = true; isAmoled = false; }
+    else if (mode === 'amoled') { isDark = true; isAmoled = true; }
+    applyThemeToDOM();
+};
+
+let typoPrefs = JSON.parse(localStorage.getItem('typo_prefs')) || { size: '1.2rem', align: 'left', font: 'Lora' };
+function applyTypo() {
+    document.documentElement.style.setProperty('--reader-size', typoPrefs.size);
+    document.documentElement.style.setProperty('--reader-align', typoPrefs.align);
+    
+    let fontCss = 'serif';
+    if(typoPrefs.font === 'Merriweather') fontCss = "'Merriweather', serif";
+    else if(typoPrefs.font === 'Playfair Display') fontCss = "'Playfair Display', serif";
+    else if(typoPrefs.font === 'Space Mono') fontCss = "'Space Mono', monospace";
+    else if(typoPrefs.font === 'Inter') fontCss = "'Inter', sans-serif";
+    else if(typoPrefs.font === 'Google Sans Flex') fontCss = "'Google Sans Flex', sans-serif";
+    else fontCss = "'Lora', serif";
+
+    document.documentElement.style.setProperty('--reader-font', fontCss);
+    localStorage.setItem('typo_prefs', JSON.stringify(typoPrefs)); syncTypoUI();
+}
+function syncTypoUI() {
+    const maps = { size: { '1rem': 'typo-sz-sm', '1.2rem': 'typo-sz-md', '1.5rem': 'typo-sz-lg' }, align: { 'left': 'typo-al-left', 'center': 'typo-al-center', 'justify': 'typo-al-justify' }, font: { 'Lora': 'typo-fn-lora','Merriweather':'typo-fn-merri','Playfair Display':'typo-fn-playfair', 'Inter': 'typo-fn-inter', 'Space Mono': 'typo-fn-mono', 'Google Sans Flex': 'typo-fn-google' } };
+    
+    Object.values(maps.size).forEach(id => { const el = document.getElementById(id); if(el){ el.classList.remove('bg-m3-primary', 'text-m3-onPrimary'); el.classList.add('text-m3-onSurfaceVariant'); }});
+    Object.values(maps.align).forEach(id => { const el = document.getElementById(id); if(el){ el.classList.remove('bg-m3-primary', 'text-m3-onPrimary'); el.classList.add('text-m3-onSurfaceVariant'); }});
+    Object.values(maps.font).forEach(id => { const el = document.getElementById(id); if(el){ el.classList.remove('bg-m3-primaryContainer', 'text-m3-onPrimaryContainer'); }});
+    
+    if(document.getElementById(maps.size[typoPrefs.size])) {
+        document.getElementById(maps.size[typoPrefs.size]).classList.add('bg-m3-primary', 'text-m3-onPrimary');
+        document.getElementById(maps.size[typoPrefs.size]).classList.remove('text-m3-onSurfaceVariant');
+    }
+    if(document.getElementById(maps.align[typoPrefs.align])) {
+        document.getElementById(maps.align[typoPrefs.align]).classList.add('bg-m3-primary', 'text-m3-onPrimary');
+        document.getElementById(maps.align[typoPrefs.align]).classList.remove('text-m3-onSurfaceVariant');
+    }
+    if(document.getElementById(maps.font[typoPrefs.font])) {
+        document.getElementById(maps.font[typoPrefs.font]).classList.add('bg-m3-primaryContainer', 'text-m3-onPrimaryContainer');
+    }
+}
+window.changeTypo = function(type, value) { typoPrefs[type] = value; applyTypo(); }
+
+
+// 10. READER INTERACTIONS
+window.openBook = function(book) {
+    activeBookId = book.id; pushAppHistory(`reader-${book.id}`);
+    DOM.libView.style.transform = 'scale(0.95)'; DOM.readView.classList.remove('translate-y-full');
+    DOM.title.textContent = book.title; 
+    
+    const loader = document.getElementById('reader-loading-overlay');
+    loader.classList.remove('hidden'); requestAnimationFrame(() => loader.classList.remove('opacity-0'));
+    
+    DOM.inner.innerHTML = ''; DOM.tocList.innerHTML = '';
+    if (observer) observer.disconnect();
+
+    DOM.progBar.style.width = `${book.progressPct || 0}%`; DOM.progTxt.textContent = `${book.progressPct || 0}%`;
+
+    setTimeout(() => {
+        let hCounter = 0; const fragment = document.createDocumentFragment(); let currentHeadingId = null;
+
+        book.nodes.forEach((node, i) => {
+            let el; const annots = (book.annotations || []).filter(a => a.nodeIdx === i);
+
+            if (node.tag === 'img') {
+                el = document.createElement('img'); el.src = node.src; el.id = `node-${i}`;
+                el.className = "w-full max-w-lg mx-auto rounded-2xl my-8 object-contain shadow-sm"; el.loading = "lazy";
+            } else {
+                el = document.createElement(node.tag); 
+                el.innerHTML = window.renderNodeText ? window.renderNodeText(node.text, annots) : node.text; 
+                el.id = `node-${i}`;
+                if (node.tag === 'h1' || node.tag === 'h2') {
+                    hCounter++; currentHeadingId = el.id; 
+                    el.className = node.tag === 'h1' ? "text-3xl font-bold tracking-tight mt-12 mb-6 text-m3-primary leading-snug break-words" : "text-xl font-bold mt-10 mb-4 text-m3-onSurfaceVariant border-b border-m3-surfaceVariant pb-2 break-words";
+                    const tocItem = document.createElement('button'); tocItem.id = `toc-btn-${el.id}`;
+                    tocItem.className = `text-left text-sm p-3 rounded-2xl hover:bg-m3-surface transition-all duration-300 ${node.tag==='h1'?'font-bold text-m3-primary':'ml-4 opacity-80'}`;
+                    tocItem.textContent = node.text;
+                    tocItem.onclick = () => { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.back(); };
+                    DOM.tocList.appendChild(tocItem);
+                } else { el.className = "text-m3-onSurface opacity-90 mb-5 tracking-wide"; }
+            }
+            el.dataset.headingId = currentHeadingId; fragment.appendChild(el);
+        });
+        DOM.inner.appendChild(fragment);
         
-        // Aktifkan Observer Progress
-        setTimeout(() => {
-            const obsOpts = { root: DOM.content, rootMargin: '0px', threshold: 0.1 };
-            observer = new IntersectionObserver((entries) => {
-                let firstVisible = entries.find(e => e.isIntersecting);
-                if (firstVisible) {
-                    const idParts = firstVisible.target.id.split('-');
-                    if(idParts.length !== 2) return;
-                    const idx = parseInt(idParts[1]);
-                    
-                    book.lastReadId = firstVisible.target.id;
-                    book.progressPct = Math.round((idx / nodesToRender.length) * 100);
-                    
-                    DOM.readProg.style.width = `${book.progressPct}%`;
-                    DOM.progTxt.textContent = `${book.progressPct}%`;
-                    
-                    clearTimeout(window.saveProgTimeout);
-                    window.saveProgTimeout = setTimeout(() => { localforage.setItem('pdf_epub_master', library); }, 2000);
-                }
-            }, obsOpts);
+        if(hCounter === 0) DOM.tocList.innerHTML = "<p class='text-sm opacity-50 block p-3'>No Table of Contents.</p>";
+        DOM.searchRes.classList.add('hidden'); DOM.searchInput.value = '';
+
+        const header = document.getElementById('reader-floating-header');
+        header.classList.remove('-translate-y-[150%]', 'opacity-0');
+        header.classList.add('translate-y-0', 'opacity-100');
+
+        renderBookmarkPanel(); 
+
+        requestAnimationFrame(() => {
             
-            document.querySelectorAll('#reader-inner > *').forEach(el => observer.observe(el));
-        }, 500);
+            if (book.lastReadId) { 
+                const target = document.getElementById(book.lastReadId); 
+                const container = DOM.readContent;
+                if (target && container) {
+                    const cRect = container.getBoundingClientRect();
+                    const tRect = target.getBoundingClientRect();
+                    const offset = tRect.top - cRect.top + container.scrollTop - (cRect.height / 2) + (tRect.height / 2);
+                    container.scrollTo({ top: offset, behavior: 'auto' });
+                } 
+            } else { 
+                DOM.readContent.scrollTo({ top: 0, behavior: 'auto' }); 
+            }
+            
+            setTimeout(() => {
+                loader.classList.add('opacity-0'); 
+                setTimeout(() => loader.classList.add('hidden'), 300);
+                window.setupIntersectionObserver(); 
+            }, 150);
+            
+        });
 
-        pushAppHistory('reader');
-    }, 400); // Jeda buat animasi loading smooth
+    }, 600); 
 }
 
-window.closeReader = async function() {
-    if (observer) observer.disconnect(); 
-    activeBookId = null; 
-    window.currentBookNodes = null; // Bersihkan memori RAM
-    DOM.searchInput.value = ''; DOM.searchRes.classList.add('hidden');
-    DOM.readView.classList.add('translate-y-full'); 
-    DOM.libView.classList.remove('-translate-y-20', 'opacity-0');
-    renderLibrary(document.getElementById('global-search') ? document.getElementById('global-search').value.toLowerCase() : "");
+window._closeReaderAction = function(isFromHistory = false) {
+    if (!isFromHistory) { history.back(); return; }
+    DOM.readView.classList.add('translate-y-full'); DOM.libView.style.transform = 'scale(1)';
+    if(observer) observer.disconnect(); renderLibrary(DOM.globalSearch.value); activeBookId = null;
+    window.getSelection().removeAllRanges();
+    const menu = document.getElementById('selection-menu');
+    if(menu) { menu.classList.add('opacity-0', 'scale-75'); setTimeout(() => menu.classList.add('hidden'), 200); }
+    updateBottomNavUI(null);
 }
 
+if(document.getElementById('btn-back')) {
+    document.getElementById('btn-back').addEventListener('click', () => history.back());
+}
 
-// 5. ANNOTATION & BOOKMARK ENGINE
-window.renderNodeText = function(text, nodeAnnots) {
-    if (!nodeAnnots || nodeAnnots.length === 0) return text;
+window._closeSidePanelsAction = function(isFromHistory = false) { 
+    if (!isFromHistory) { history.back(); return; }
+    if(DOM.tocPanel) DOM.tocPanel.classList.add('translate-x-full', 'opacity-0'); 
+    if(DOM.setPanel) DOM.setPanel.classList.add('translate-x-full', 'opacity-0'); 
+    if(DOM.bookmarkPanel) DOM.bookmarkPanel.classList.add('translate-x-full', 'opacity-0');
+    const overlay = document.getElementById('side-panel-overlay'); if(overlay) overlay.classList.add('hidden');
+    activePanel = null;
+    updateBottomNavUI(null);
+}
+
+window.togglePanel = function(panelEl, name, btnId) { 
+    if(activePanel === name) { history.back(); return; } 
+    if(activePanel) { 
+        _closeSidePanelsAction(true); 
+        history.replaceState({ state: `panel-${name}` }, '', `#panel-${name}`); 
+    } else { 
+        pushAppHistory(`panel-${name}`); 
+    }
+    panelEl.classList.remove('translate-x-full', 'opacity-0'); 
+    const overlay = document.getElementById('side-panel-overlay'); if(overlay) overlay.classList.remove('hidden');
+    activePanel = name; 
+    updateBottomNavUI(btnId);
+
+    if (name === 'toc' && DOM.tocList) {
+        setTimeout(() => {
+            const activeTocItem = DOM.tocList.querySelector('.bg-m3-primaryContainer');
+            if (activeTocItem) {
+                const offset = activeTocItem.offsetTop - (DOM.tocList.clientHeight / 2) + (activeTocItem.clientHeight / 2);
+                DOM.tocList.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+            }
+        }, 250);
+    }
+}
+
+if(document.getElementById('btn-toc')) document.getElementById('btn-toc').onclick = () => togglePanel(DOM.tocPanel, 'toc', 'btn-toc'); 
+if(document.getElementById('btn-settings')) document.getElementById('btn-settings').onclick = () => togglePanel(DOM.setPanel, 'set', 'btn-settings');
+
+window.toggleFullscreenReading = function(isFromHistory = false) {
+    const bottomBar = document.getElementById('reader-bottom-bar');
+    const progContainer = document.getElementById('progress-container');
+    const floatHeader = document.getElementById('reader-floating-header');
     
-    nodeAnnots.sort((a, b) => a.start - b.start);
-    let html = ""; let lastIdx = 0;
-    
-    nodeAnnots.forEach(ann => {
-        if (ann.start >= lastIdx) {
-            html += text.substring(lastIdx, ann.start);
-            html += `<mark class="cursor-pointer transition-opacity hover:opacity-80 hl-${ann.color}" data-annot-id="${ann.id}" onclick="event.preventDefault(); window.editAnnotation('${ann.id}')">${text.substring(ann.start, ann.end)}</mark>`;
-            lastIdx = ann.end;
+    if (bottomBar.classList.contains('hidden')) {
+        if (!isFromHistory && window.location.hash === '#immersive') { history.back(); }
+        bottomBar.classList.remove('hidden'); 
+        progContainer.classList.remove('hidden');
+        floatHeader.classList.remove('-translate-y-[150%]', 'opacity-0');
+        floatHeader.classList.add('translate-y-0', 'opacity-100');
+    } else {
+        if (!isFromHistory) { pushAppHistory('immersive'); }
+        bottomBar.classList.add('hidden'); 
+        floatHeader.classList.add('-translate-y-[150%]', 'opacity-0');
+        floatHeader.classList.remove('translate-y-0', 'opacity-100');
+        progContainer.classList.add('hidden');
+        updateBottomNavUI(null);
+        if(activePanel) { _closeSidePanelsAction(); } 
+    }
+};
+
+window.setupIntersectionObserver = function() {
+    if (observer) observer.disconnect(); const totalNodes = DOM.inner.children.length;
+    observer = new IntersectionObserver((entries) => {
+        let visibleEntry = entries.find(e => e.isIntersecting);
+        if (visibleEntry) {
+            const el = visibleEntry.target; const id = el.id; const index = parseInt(id.split('-')[1]);
+            const pct = Math.round(((index + 1) / totalNodes) * 100);
+            DOM.progBar.style.width = `${pct}%`; DOM.progTxt.textContent = `${pct}%`;
+
+            const activeHeadingId = el.dataset.headingId;
+            Array.from(DOM.tocList.children).forEach(btn => { btn.classList.remove('bg-m3-primaryContainer', 'text-m3-onPrimaryContainer', 'font-bold', 'translate-x-2', '!opacity-100', '!text-m3-onPrimaryContainer'); });
+            if(activeHeadingId) { 
+                const tocActiveBtn = document.getElementById(`toc-btn-${activeHeadingId}`); 
+                if (tocActiveBtn) { tocActiveBtn.classList.add('bg-m3-primaryContainer', '!text-m3-onPrimaryContainer', 'font-bold', 'translate-x-2', '!opacity-100'); }
+            }
+            updateBookProgress(activeBookId, id, pct);
         }
-    });
-    html += text.substring(lastIdx);
+    }, { root: DOM.readContent, rootMargin: '-45% 0px -45% 0px', threshold: 0 }); 
+    Array.from(DOM.inner.children).forEach(el => observer.observe(el));
+}
+
+let progressSaveTimeout = null;
+async function updateBookProgress(bookId, lastNodeId, pct) {
+    let bookIndex = library.findIndex(b => b.id === bookId);
+    if(bookIndex > -1) { 
+        library[bookIndex].lastReadId = lastNodeId; library[bookIndex].progressPct = pct; 
+        if (progressSaveTimeout) clearTimeout(progressSaveTimeout);
+        progressSaveTimeout = setTimeout(() => { localforage.setItem('pdf_epub_master', library); updateStatistics(); }, 1500);
+    }
+}
+
+// 11. ANNOTATIONS & IN-BOOK BOOKMARK LOGIC
+
+function getAbsoluteOffsets(element) {
+    const sel = window.getSelection();
+    if (sel.rangeCount === 0) return { start: 0, end: 0 };
+    const range = sel.getRangeAt(0);
+    
+    function getTextOffset(node, offset) {
+        let len = 0;
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+        let n;
+        while ((n = walker.nextNode())) {
+            if (n === node) { len += offset; break; }
+            len += n.nodeValue.length;
+        }
+        return len;
+    }
+
+    let start = getTextOffset(range.startContainer, range.startOffset);
+    let end = getTextOffset(range.endContainer, range.endOffset);
+    
+    if (start > end) { let t = start; start = end; end = t; }
+    return { start, end };
+}
+
+window.renderNodeText = function(text, annots) {
+    if (!text) return "";
+    let html = text;
+    
+    if (annots && annots.length > 0) {
+        let validAnnots = [...annots].filter(a => typeof a.startOff !== 'undefined').sort((a,b) => b.startOff - a.startOff);
+        
+        validAnnots.forEach(a => {
+            const s = Math.min(a.startOff, html.length);
+            const e = Math.min(a.endOff, html.length);
+            const before = html.substring(0, s);
+            const middle = html.substring(s, e);
+            const after = html.substring(e);
+            html = before + `|||ST_${a.id}|||` + middle + `|||EN_${a.id}|||` + after;
+        });
+
+        let legacyAnnots = [...annots].filter(a => typeof a.startOff === 'undefined').sort((a,b) => b.text.length - a.text.length);
+        legacyAnnots.forEach(a => {
+            const esc = a.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            html = html.replace(new RegExp(esc, ''), `|||ST_${a.id}|||${a.text}|||EN_${a.id}|||`);
+        });
+    }
+
+    html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    html = html.replace(/"([^"]+)"/g, '<i class="italic font-serif opacity-90">"$1"</i>');
+
+    if (annots && annots.length > 0) {
+        annots.forEach(a => {
+            let colorClass = "";
+            if(a.color === 'yellow') colorClass = "text-yellow-600 bg-yellow-400/20 dark:text-yellow-400 dark:bg-yellow-400/20";
+            else if(a.color === 'green') colorClass = "text-green-600 bg-green-500/20 dark:text-green-400 dark:bg-green-400/20";
+            else if(a.color === 'pink') colorClass = "text-pink-600 bg-pink-500/20 dark:text-pink-400 dark:bg-pink-400/20";
+            else colorClass = "text-m3-primary bg-m3-primary/10";
+
+            let markHtml = `<mark class="annot-hl ${colorClass} font-medium cursor-pointer transition-all hover:opacity-80 px-1 mx-0.5 rounded-md" data-id="${a.id}" onclick="window.showAnnotationDetails('${a.id}')">`;
+            html = html.replace(`|||ST_${a.id}|||`, markHtml).replace(`|||EN_${a.id}|||`, '</mark>');
+        });
+    }
     return html;
 }
 
-window.handleTextSelection = function() {
-    const sel = window.getSelection();
-    const menu = document.getElementById('selection-menu');
-    
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !activeBookId) {
-        hideSelectionMenu(); return;
-    }
-    
-    const range = sel.getRangeAt(0);
-    const container = range.commonAncestorContainer;
-    const nodeEl = container.nodeType === 3 ? container.parentNode.closest('[id^="node-"]') : container.closest('[id^="node-"]');
-    
-    if (!nodeEl || !DOM.inner.contains(nodeEl)) { hideSelectionMenu(); return; }
-    
-    const nodeIdx = parseInt(nodeEl.id.split('-')[1]);
-    const rect = range.getBoundingClientRect();
-    
-    if (rect.width === 0 || rect.height === 0) { hideSelectionMenu(); return; }
-    
-    // Kalkulasi Offset Super Akurat
-    const preSelectionRange = range.cloneRange();
-    preSelectionRange.selectNodeContents(nodeEl);
-    preSelectionRange.setEnd(range.startContainer, range.startOffset);
-    let startOff = preSelectionRange.toString().length;
-    let text = sel.toString();
-    let endOff = startOff + text.length;
+let _selChangeDebounce = null;
+let _isTouchDragging = false;
 
-    currentSelection = { text, nodeIdx, startOff, endOff, nodeEl };
-    
-    menu.classList.remove('hidden');
-    
-    let top = rect.top - menu.offsetHeight - 15;
-    let left = rect.left + (rect.width / 2) - (menu.offsetWidth / 2);
-    
-    if (top < 60) top = rect.bottom + 10;
-    left = Math.max(10, Math.min(left, window.innerWidth - menu.offsetWidth - 10));
-    
-    menu.style.top = `${top}px`;
-    menu.style.left = `${left}px`;
-    
-    requestAnimationFrame(() => {
-        menu.classList.remove('opacity-0', 'scale-75');
+// Di HP: pakai touchstart/touchend buat deteksi kapan user lagi drag
+document.addEventListener('touchstart', () => { _isTouchDragging = true; }, { passive: true });
+document.addEventListener('touchend', () => {
+    _isTouchDragging = false;
+    // Waktu jari diangkat, baru tampilkan menu
+    if (activeBookId) {
+        clearTimeout(_selChangeDebounce);
+        _selChangeDebounce = setTimeout(_handleSelectionChange, 80);
+    }
+}, { passive: true });
+
+function _handleSelectionChange() {
+    if(!activeBookId) return;
+    const sel = window.getSelection(); const text = sel.toString().trim(); const menu = document.getElementById('selection-menu');
+
+    if (text.length > 0 && sel.rangeCount > 0 && DOM.inner) {
+        const range = sel.getRangeAt(0);
+        if (!DOM.inner.contains(range.commonAncestorContainer)) return;
+
+        let curr = range.commonAncestorContainer;
+        if (curr.nodeType === 3) curr = curr.parentNode;
+        const nodeEl = curr.closest('[id^="node-"]'); if (!nodeEl) return;
+
+        const nodeIdx = parseInt(nodeEl.id.split('-')[1]);
+        const offsets = getAbsoluteOffsets(nodeEl);
+        currentSelection = { text: text, nodeIdx: nodeIdx, startOff: offsets.start, endOff: offsets.end };
+
+        menu.classList.remove('hidden');
+        const rect = range.getBoundingClientRect(); const menuWidth = menu.offsetWidth || 220; const padding = 16;
+        let targetLeft = rect.left + (rect.width / 2) - (menuWidth / 2);
+        if (targetLeft < padding) targetLeft = padding;
+        if (targetLeft + menuWidth > window.innerWidth - padding) targetLeft = window.innerWidth - menuWidth - padding;
+        let targetTop = rect.top - 55;
+        if (targetTop < 80) targetTop = rect.bottom + 15;
+
+        menu.style.top = `${targetTop}px`; menu.style.left = `${targetLeft}px`;
+        requestAnimationFrame(() => { menu.classList.remove('opacity-0', 'scale-75'); });
+    } else {
+        if (!_isTouchDragging) window.hideSelectionMenu();
+    }
+}
+
+document.addEventListener('selectionchange', () => {
+    if(!activeBookId) return;
+    // Saat masih drag, debounce lebih lama supaya ga berat
+    clearTimeout(_selChangeDebounce);
+    _selChangeDebounce = setTimeout(_handleSelectionChange, _isTouchDragging ? 300 : 50);
+});
+
+if(document.getElementById('reader-content')) {
+    document.getElementById('reader-content').addEventListener('mousedown', (e) => { 
+        const menu = document.getElementById('selection-menu');
+        // Kalau klik di dalam menu, jangan lakukan apapun
+        if(menu && !menu.classList.contains('hidden') && menu.contains(e.target)) return;
+        // Clear menu hanya kalau memang tidak ada teks terseleksi
+        if(!window.getSelection().toString().trim()) { window.hideSelectionMenu(); } 
     });
-    
-    if(window.lucide) window.lucide.createIcons();
 }
 
 window.hideSelectionMenu = function() {
     const menu = document.getElementById('selection-menu');
-    if(!menu.classList.contains('hidden')) {
-        menu.classList.add('opacity-0', 'scale-75');
-        setTimeout(() => { menu.classList.add('hidden'); }, 200);
-        window.getSelection().removeAllRanges();
+    if (menu) { menu.classList.add('opacity-0', 'scale-75'); setTimeout(() => menu.classList.add('hidden'), 200); }
+}
+
+function showToast(msg) {
+    let t = document.getElementById('copy-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'copy-toast';
+        t.className = 'fixed bottom-28 left-1/2 -translate-x-1/2 z-[999] px-5 py-2.5 rounded-full bg-m3-onSurface text-m3-surface text-xs font-bold shadow-lg transition-all duration-300 opacity-0';
+        document.body.appendChild(t);
     }
+    t.textContent = msg;
+    t.classList.remove('opacity-0');
+    clearTimeout(t._hide);
+    t._hide = setTimeout(() => t.classList.add('opacity-0'), 1500);
+}
+
+window.copySelection = function() {
+    const text = currentSelection.text;
+    if (!text) return;
+    window.hideSelectionMenu();
+    window.getSelection().removeAllRanges();
+    showToast(wikiLang === 'es' ? '¡Copiado!' : wikiLang === 'id' ? 'Tersalin!' : 'Copied!');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+        });
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+}
+
+async function registerAnnotation(annotObj) {
+    window.hideSelectionMenu(); const bookIndex = library.findIndex(b => b.id === activeBookId); if(bookIndex === -1) return;
+    const book = library[bookIndex]; if(!book.annotations) book.annotations = [];
+    book.annotations.push(annotObj); await localforage.setItem('pdf_epub_master', library);
+    
+    const nodeEl = document.getElementById(`node-${annotObj.nodeIdx}`);
+    if(nodeEl && book.nodes[annotObj.nodeIdx]) {
+        const currentAnnots = book.annotations.filter(a => a.nodeIdx === annotObj.nodeIdx);
+        nodeEl.innerHTML = window.renderNodeText(book.nodes[annotObj.nodeIdx].text, currentAnnots);
+    }
+    window.getSelection().removeAllRanges();
+    window.renderBookmarkPanel();
+    updateStatistics(); 
 }
 
 window.openBookmarkModal = function(color) {
     if(currentSelection.nodeIdx === -1) return;
-    activeNoteColor = color;
-    hideSelectionMenu();
+    
+    activeNoteColor = color; 
+    editingAnnotId = null; 
+    
     document.getElementById('bookmark-input-title').value = '';
     document.getElementById('bookmark-input-text').value = '';
-    document.getElementById('str-bookmark-modal-title').innerHTML = `<i data-lucide="bookmark" class="w-5 h-5 text-${color}-500 fill-current"></i> Bookmark Baru`;
     document.getElementById('btn-delete-bookmark').classList.add('hidden');
-    editingAnnotId = null;
-    if(window.lucide) window.lucide.createIcons();
     
-    pushAppHistory('bookmark-modal');
-    openModalRaw('bookmark-modal', 'bookmark-sheet');
-}
+    openModal('bookmark-modal', 'bookmark-sheet', true);
+};
 
-window.saveBookmarkAnnotation = async function() {
-    const bookIdx = library.findIndex(b => b.id === activeBookId);
-    if(bookIdx === -1) return;
+window.saveBookmarkAnnotation = function() {
+    const titleVal = document.getElementById('bookmark-input-title').value.trim();
+    const noteVal = document.getElementById('bookmark-input-text').value.trim();
+    history.back(); 
     
-    const title = document.getElementById('bookmark-input-title').value.trim();
-    const note = document.getElementById('bookmark-input-text').value.trim();
-    if(!library[bookIdx].annotations) library[bookIdx].annotations = [];
-    
-    if (editingAnnotId) {
-        const ann = library[bookIdx].annotations.find(a => a.id === editingAnnotId);
-        if(ann) { ann.title = title; ann.note = note; }
+    if(editingAnnotId) {
+        const bookIndex = library.findIndex(b => b.id === activeBookId);
+        if(bookIndex > -1) {
+            const annotIndex = library[bookIndex].annotations.findIndex(a => a.id === editingAnnotId);
+            if(annotIndex > -1) {
+                library[bookIndex].annotations[annotIndex].title = titleVal;
+                library[bookIndex].annotations[annotIndex].note = noteVal;
+                localforage.setItem('pdf_epub_master', library).then(() => {
+                    window.renderBookmarkPanel();
+                });
+            }
+        }
     } else {
-        const newAnnot = {
-            id: 'ann_' + Date.now(),
-            nodeIdx: currentSelection.nodeIdx,
-            start: currentSelection.startOff,
-            end: currentSelection.endOff,
-            text: currentSelection.text,
-            color: activeNoteColor,
-            title: title, note: note,
-            timestamp: Date.now()
-        };
-        library[bookIdx].annotations.push(newAnnot);
-        
-        // Re-render Paragraf 
-        const nodeText = window.currentBookNodes[currentSelection.nodeIdx].text;
-        const nodeAnnots = library[bookIdx].annotations.filter(a => a.nodeIdx === currentSelection.nodeIdx);
-        currentSelection.nodeEl.innerHTML = renderNodeText(nodeText, nodeAnnots);
-    }
-    
-    await localforage.setItem('pdf_epub_master', library);
-    renderBookmarkList();
-    _closeModalAction('bookmark-modal', 'bookmark-sheet', true);
-}
+        const book = library.find(b => b.id === activeBookId);
+        if (!book) return;
 
-window.editAnnotation = function(annotId) {
-    const book = library.find(b => b.id === activeBookId);
-    if(!book || !book.annotations) return;
-    const ann = book.annotations.find(a => a.id === annotId);
-    if(!ann) return;
+        const totalNodes = book.nodes.length;
+        const pct = Math.round(((currentSelection.nodeIdx + 1) / totalNodes) * 100);
+
+        let closestChapterName = wikiLang === 'es' ? "Sección del libro" : wikiLang === 'id' ? "Bagian Buku" : "Book Section";
+        for (let i = currentSelection.nodeIdx; i >= 0; i--) {
+            if (book.nodes[i].tag === 'h1' || book.nodes[i].tag === 'h2') {
+                closestChapterName = book.nodes[i].text;
+                break;
+            }
+        }
+        const chapterPreview = closestChapterName.length > 15 ? closestChapterName.substring(0, 15) + '...' : closestChapterName;
+
+        const newAnnot = { 
+            id: 'BM_' + Date.now().toString(), 
+            nodeIdx: currentSelection.nodeIdx, 
+            startOff: currentSelection.startOff, 
+            endOff: currentSelection.endOff,
+            text: currentSelection.text, 
+            color: activeNoteColor, 
+            title: titleVal || (wikiLang === 'es' ? "Nuevo marcador" : wikiLang === 'id' ? "Bookmark Baru" : "New Bookmark"), 
+            note: noteVal,
+            meta: `${chapterPreview} — ${pct}%`
+        };
+        
+        setTimeout(() => { registerAnnotation(newAnnot); }, 300);
+    }
+};
+
+window.showAnnotationDetails = function(annotId) {
+    event.preventDefault(); event.stopPropagation();
+    const book = library.find(b => b.id === activeBookId); if(!book || !book.annotations) return;
+    const annot = book.annotations.find(a => a.id === annotId); if(!annot) return;
     
     editingAnnotId = annotId;
-    document.getElementById('bookmark-input-title').value = ann.title || '';
-    document.getElementById('bookmark-input-text').value = ann.note || '';
-    document.getElementById('str-bookmark-modal-title').innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-${ann.color}-500"></i> Edit Catatan`;
+    currentSelection = { nodeIdx: annot.nodeIdx, text: annot.text };
+    
+    document.getElementById('bookmark-input-title').value = annot.title || '';
+    document.getElementById('bookmark-input-text').value = annot.note || '';
     document.getElementById('btn-delete-bookmark').classList.remove('hidden');
-    if(window.lucide) window.lucide.createIcons();
     
-    pushAppHistory('bookmark-modal');
-    openModalRaw('bookmark-modal', 'bookmark-sheet');
-}
+    openModal('bookmark-modal', 'bookmark-sheet', true);
+};
 
-window.deleteBookmarkInsideModal = async function() {
-    if(!editingAnnotId) return;
-    const bookIdx = library.findIndex(b => b.id === activeBookId);
-    if(bookIdx === -1) return;
-    
-    const ann = library[bookIdx].annotations.find(a => a.id === editingAnnotId);
-    if(ann) {
-        library[bookIdx].annotations = library[bookIdx].annotations.filter(a => a.id !== editingAnnotId);
-        await localforage.setItem('pdf_epub_master', library);
-        
-        const nodeEl = document.getElementById(`node-${ann.nodeIdx}`);
-        if(nodeEl && window.currentBookNodes) {
-            const nodeText = window.currentBookNodes[ann.nodeIdx].text;
-            const nodeAnnots = library[bookIdx].annotations.filter(a => a.nodeIdx === ann.nodeIdx);
-            nodeEl.innerHTML = renderNodeText(nodeText, nodeAnnots);
-        }
-        renderBookmarkList();
-    }
-    _closeModalAction('bookmark-modal', 'bookmark-sheet', true);
-}
-
-function renderBookmarkList() {
-    DOM.bookmarkList.innerHTML = '';
-    const emptyMsg = document.getElementById('bookmark-empty');
-    const book = library.find(b => b.id === activeBookId);
-    
-    if(!book || !book.annotations || book.annotations.length === 0) {
-        emptyMsg.classList.remove('hidden'); return;
-    }
-    
-    emptyMsg.classList.add('hidden');
-    const sorted = [...book.annotations].sort((a,b) => a.nodeIdx - b.nodeIdx);
-    
-    sorted.forEach(ann => {
-        const el = document.createElement('div');
-        el.className = 'bg-m3-surface p-4 rounded-2xl cursor-pointer hover:bg-m3-surface/80 transition-colors border-none mb-3 group relative';
-        
-        let titleHtml = ann.title ? `<h4 class="font-bold text-sm mb-1 text-m3-onSurface">${ann.title}</h4>` : '';
-        let noteHtml = ann.note ? `<p class="text-xs text-m3-onSurfaceVariant mb-2 opacity-80 font-medium">${ann.note}</p>` : '';
-        
-        el.innerHTML = `
-            <div class="absolute top-0 left-0 w-1.5 h-full rounded-l-2xl bg-${ann.color}-400 dark:bg-${ann.color}-600"></div>
-            <div class="pl-2">
-                ${titleHtml}
-                ${noteHtml}
-                <blockquote class="text-[10px] italic border-l-2 border-m3-onSurfaceVariant/20 pl-2 text-m3-onSurfaceVariant/60 line-clamp-3">"${ann.text}"</blockquote>
-            </div>
-        `;
-        el.onclick = () => {
-            const target = document.getElementById(`node-${ann.nodeIdx}`);
-            if(target) { target.scrollIntoView({behavior: 'smooth', block: 'center'}); closeAllPanels(); }
-        };
-        DOM.bookmarkList.appendChild(el);
-    });
-}
-
-// 6. UI & THEME LOGIC
-function togglePanel(panelEl, panelId, btnId) {
-    if (activePanel === panelId) { closeAllPanels(); return; }
-    if (activePanel) closeAllPanels(false);
-    
-    activePanel = panelId;
-    DOM.overlay.classList.remove('hidden');
-    panelEl.classList.remove('hidden');
-    
-    requestAnimationFrame(() => {
-        DOM.overlay.classList.remove('opacity-0');
-        panelEl.classList.remove('translate-x-full', 'opacity-0');
-    });
-    
-    if (btnId) {
-        document.querySelectorAll('.capsule-btn').forEach(btn => btn.classList.remove('nav-active'));
-        document.getElementById(btnId).classList.add('nav-active');
-    }
-    
-    // Fullscreen auto-hide logic header
-    if(document.fullscreenElement) {
-        document.getElementById('reader-floating-header').classList.remove('-translate-y-full', 'opacity-0');
-        setTimeout(() => { if(activePanel === panelId) document.getElementById('reader-floating-header').classList.add('-translate-y-full', 'opacity-0'); }, 2000);
-    }
-    
-    pushAppHistory(`panel-${panelId}`);
-}
-
-window.closeAllPanels = function(removeHistory = true) {
-    if(removeHistory && activePanel) history.back();
-    else _executeClosePanel();
-}
-
-function _executeClosePanel() {
-    activePanel = null;
-    DOM.overlay.classList.add('opacity-0');
-    [DOM.tocPanel, DOM.bookmarkPanel, DOM.settingsPanel].forEach(p => {
-        p.classList.add('translate-x-full', 'opacity-0');
-    });
-    document.querySelectorAll('.capsule-btn').forEach(btn => btn.classList.remove('nav-active'));
-    setTimeout(() => {
-        DOM.overlay.classList.add('hidden');
-        [DOM.tocPanel, DOM.bookmarkPanel, DOM.settingsPanel].forEach(p => p.classList.add('hidden'));
-    }, 300);
-}
-
-window.toggleThemeState = function() {
-    isDark = !isDark; 
-    localStorage.setItem('theme', isDark ? 'dark' : 'light'); 
-    applyThemeGlobal(currentThemeKey, isDark);
-    if (isAmoled && isDark) toggleAmoled(); // Disable AMOLED if toggling main theme
-}
-
-window.toggleAmoled = function() {
-    if (!isDark) return;
-    isAmoled = !isAmoled;
-    localStorage.setItem('amoled', isAmoled);
-    applyThemeGlobal(currentThemeKey, isDark);
-}
-
-window.setTheme = function(key) {
-    currentThemeKey = key;
-    localStorage.setItem('m3-key', key);
-    applyThemeGlobal(key, isDark);
-}
-
-function applyThemeGlobal(key, dark) {
-    const root = document.documentElement;
-    root.classList.toggle('dark', dark);
-    
-    const amoledToggle = document.getElementById('amoled-toggle-container');
-    const amoledLabel = document.getElementById('str-amoled-label');
-    const amoledKnob = document.getElementById('amoled-switch-knob');
-    const amoledBg = document.getElementById('amoled-switch-bg');
-
-    if (dark) {
-        amoledToggle.classList.remove('hidden');
-        if (isAmoled) {
-            root.style.setProperty('--md-sys-color-background', '#000000');
-            root.style.setProperty('--md-sys-color-surface', '#09090B');
-            root.style.setProperty('--md-sys-color-surface-variant', '#18181B');
-            amoledLabel.classList.remove('opacity-80');
-            amoledKnob.classList.add('translate-x-8', 'bg-m3-primary');
-            amoledKnob.classList.remove('bg-m3-onSurface');
-            amoledBg.classList.add('bg-m3-primaryContainer');
-        } else {
-            root.style.setProperty('--md-sys-color-background', '#1C1B1E');
-            root.style.setProperty('--md-sys-color-surface', '#212024');
-            root.style.setProperty('--md-sys-color-surface-variant', '#2D2B30');
-            amoledLabel.classList.add('opacity-80');
-            amoledKnob.classList.remove('translate-x-8', 'bg-m3-primary');
-            amoledKnob.classList.add('bg-m3-onSurface');
-            amoledBg.classList.remove('bg-m3-primaryContainer');
-            amoledBg.classList.add('bg-m3-onSurfaceVariant/20');
-        }
-        
-        // Icon Mode Update
-        document.getElementById('theme-label-text').textContent = typeof i18n !== 'undefined' ? (i18n[wikiLang]?.themeDark || "Mode Gelap") : "Mode Gelap";
-        document.getElementById('theme-switch-icon').setAttribute('data-lucide', 'moon');
-        document.getElementById('theme-switch-knob').classList.add('translate-x-8');
-        document.getElementById('theme-switch-bg').classList.add('bg-m3-primaryContainer');
-        
-    } else {
-        amoledToggle.classList.add('hidden');
-        root.style.setProperty('--md-sys-color-background', '#FEFBFF');
-        root.style.setProperty('--md-sys-color-surface', '#F3F0F4');
-        root.style.setProperty('--md-sys-color-surface-variant', '#E7E0EC');
-        
-        document.getElementById('theme-label-text').textContent = typeof i18n !== 'undefined' ? (i18n[wikiLang]?.themeLight || "Mode Terang") : "Mode Terang";
-        document.getElementById('theme-switch-icon').setAttribute('data-lucide', 'sun');
-        document.getElementById('theme-switch-knob').classList.remove('translate-x-8');
-        document.getElementById('theme-switch-bg').classList.remove('bg-m3-primaryContainer');
-    }
-    
-    if(window.lucide) window.lucide.createIcons();
-
-    // Dinamis Color Engine
-    const pal = {
-        orchid: { pL: '#8B5CF6', oPL: '#FFFFFF', pCL: '#EAEBFF', oPCL: '#2A009C', sCL: '#E2E0FD', oSCL: '#1A1A31', pD: '#CABEFF', oPD: '#2A009C', pCD: '#4214CA', oPCD: '#EAEBFF', sCD: '#454459', oSCD: '#E2E0FD' },
-        olive: { pL: '#4F6F2E', oPL: '#FFFFFF', pCL: '#D0F8A5', oPCL: '#132100', sCL: '#DFE5D1', oSCL: '#181E10', pD: '#B4DB8C', oPD: '#233904', pCD: '#385419', oPCD: '#D0F8A5', sCD: '#43493B', oSCD: '#DFE5D1' },
-        coral: { pL: '#D95232', oPL: '#FFFFFF', pCL: '#FFDBD1', oPCL: '#3C0800', sCL: '#FFDAD4', oSCL: '#410001', pD: '#FFB4A4', oPD: '#5E1600', pCD: '#852409', oPCD: '#FFDBD1', sCD: '#930005', oSCD: '#FFDAD4' },
-        teal: { pL: '#006A7B', oPL: '#FFFFFF', pCL: '#A1F0FF', oPCL: '#001F25', sCL: '#BDEAEF', oSCL: '#002023', pD: '#50D8EE', oPD: '#00363F', pCD: '#004F5C', oPCD: '#A1F0FF', sCD: '#324B4E', oSCD: '#BDEAEF' },
-        lavender: { pL: '#5E17EB', oPL: '#FFFFFF', pCL: '#E7DEFF', oPCL: '#1B0061', sCL: '#E5DFF9', oSCL: '#1A152C', pD: '#CBBBFF', oPD: '#30009B', pCD: '#4600BD', oPCD: '#E7DEFF', sCD: '#47435B', oSCD: '#E5DFF9' },
-        rose: { pL: '#BE123C', oPL: '#FFFFFF', pCL: '#FFD9DF', oPCL: '#3F0010', sCL: '#FFD9DE', oSCL: '#3F0014', pD: '#FFB2C0', oPD: '#67001E', pCD: '#8E002B', oPCD: '#FFD9DF', sCD: '#8E0026', oSCD: '#FFD9DE' },
-        lime: { pL: '#4C6A00', oPL: '#FFFFFF', pCL: '#C9F667', oPCL: '#141F00', sCL: '#E0E5D0', oSCL: '#1A1E11', pD: '#AED94E', oPD: '#263500', pCD: '#394D00', oPCD: '#C9F667', sCD: '#45483B', oSCD: '#E0E5D0' },
-        sand: { pL: '#8D6E63', oPL: '#FFFFFF', pCL: '#FFDBCE', oPCL: '#351000', sCL: '#F5DED6', oSCL: '#2B1610', pD: '#FFB59B', oPD: '#55200D', pCD: '#753420', oPCD: '#FFDBCE', sCD: '#5C4037', oSCD: '#F5DED6' },
-        monochrome: { pL: '#37474F', oPL: '#FFFFFF', pCL: '#CFE6F1', oPCL: '#001E2A', sCL: '#D3E4ED', oSCL: '#0B1D25', pD: '#90CCDF', oPD: '#003546', pCD: '#004D64', oPCD: '#CFE6F1', sCD: '#435158', oSCD: '#D3E4ED' },
-        blueberry: { pL: '#1A237E', oPL: '#FFFFFF', pCL: '#DEE0FF', oPCL: '#000865', sCL: '#DFE0FD', oSCL: '#161A36', pD: '#BBC3FF', oPD: '#001099', pCD: '#0018C8', oPCD: '#DEE0FF', sCD: '#414560', oSCD: '#DFE0FD' }
-    };
-    const c = pal[key] || pal.orchid;
-    root.style.setProperty('--md-sys-color-primary', dark ? c.pD : c.pL);
-    root.style.setProperty('--md-sys-color-on-primary', dark ? c.oPD : c.oPL);
-    root.style.setProperty('--md-sys-color-primary-container', dark ? c.pCD : c.pCL);
-    root.style.setProperty('--md-sys-color-on-primary-container', dark ? c.oPCD : c.oPCL);
-    root.style.setProperty('--md-sys-color-secondary-container', dark ? c.sCD : c.sCL);
-    root.style.setProperty('--md-sys-color-on-secondary-container', dark ? c.oSCD : c.oSCL);
-    
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if(themeColorMeta) themeColorMeta.setAttribute('content', getComputedStyle(root).getPropertyValue('--md-sys-color-background').trim());
-}
-
-window.changeTypo = function(type, val) {
-    localStorage.setItem(`typo-${type}`, val);
-    applyTypoSettings();
-}
-
-function applyTypoSettings() {
-    const root = document.documentElement;
-    root.style.setProperty('--reader-font', localStorage.getItem('typo-font') || '"Lora", serif');
-    root.style.setProperty('--reader-size', localStorage.getItem('typo-size') || '1.2rem');
-    root.style.setProperty('--reader-align', localStorage.getItem('typo-align') || 'left');
-    
-    const thm = localStorage.getItem('reader-theme') || 'light';
-    ['light', 'dark', 'amoled'].forEach(t => document.getElementById(`theme-btn-${t}`).classList.remove('nav-active'));
-    document.getElementById(`theme-btn-${thm}`).classList.add('nav-active');
-    
-    ['1rem', '1.2rem', '1.5rem'].forEach(s => {
-        let sid = s === '1rem' ? 'sm' : (s === '1.2rem' ? 'md' : 'lg');
-        document.getElementById(`typo-sz-${sid}`).classList.remove('nav-active');
-    });
-    let curSz = localStorage.getItem('typo-size') || '1.2rem';
-    let sid = curSz === '1rem' ? 'sm' : (curSz === '1.2rem' ? 'md' : 'lg');
-    document.getElementById(`typo-sz-${sid}`).classList.add('nav-active');
-    
-    ['left', 'center', 'justify'].forEach(a => document.getElementById(`typo-al-${a}`).classList.remove('nav-active'));
-    document.getElementById(`typo-al-${localStorage.getItem('typo-align') || 'left'}`).classList.add('nav-active');
-    
-    ['Lora', 'Merriweather', 'Playfair Display', 'Inter', 'Space Mono', 'Google Sans Flex'].forEach(f => {
-        let fid = f.split(' ')[0].toLowerCase().replace('google', 'google');
-        if(document.getElementById(`typo-fn-${fid}`)) {
-            document.getElementById(`typo-fn-${fid}`).classList.remove('bg-m3-primary', 'text-m3-onPrimary');
-            document.getElementById(`typo-fn-${fid}`).classList.add('bg-m3-surface', 'text-m3-onSurface');
-        }
-    });
-    let curFont = localStorage.getItem('typo-font') || 'Lora';
-    let fid = curFont.split(' ')[0].toLowerCase().replace('google', 'google');
-    if(document.getElementById(`typo-fn-${fid}`)) {
-        document.getElementById(`typo-fn-${fid}`).classList.add('bg-m3-primary', 'text-m3-onPrimary');
-        document.getElementById(`typo-fn-${fid}`).classList.remove('bg-m3-surface', 'text-m3-onSurface');
-    }
-}
-
-window.setReaderTheme = function(thm) {
-    localStorage.setItem('reader-theme', thm);
-    applyTypoSettings();
-    if(thm === 'light') { isDark = false; isAmoled = false; }
-    else if(thm === 'dark') { isDark = true; isAmoled = false; }
-    else if(thm === 'amoled') { isDark = true; isAmoled = true; }
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('amoled', isAmoled);
-    applyThemeGlobal(currentThemeKey, isDark);
-}
-
-window.setWikiLang = function(lang) {
-    wikiLang = lang;
-    localStorage.setItem('wiki_lang', lang);
-    applyI18n();
-    document.getElementById('wiki-lang-id').classList.remove('nav-active');
-    document.getElementById('wiki-lang-en').classList.remove('nav-active');
-    document.getElementById(`wiki-lang-${lang}`).classList.add('nav-active');
-    history.back();
-}
-
-function applyI18n() {
-    if(typeof i18n === 'undefined') return;
+window.deleteBookmarkInsideModal = function() {
     const d = i18n[wikiLang] || i18n['id'];
-    
-    const set = (id, key) => { const el = document.getElementById(id); if(el && d[key]) el.textContent = d[key]; };
-    
-    set('global-search', 'searchPlaceholder');
-    set('str-continue-reading', 'continueReading');
-    set('str-pinned-books', 'pinnedBooks');
-    set('str-book-collection', 'bookCollection');
-    set('str-lib-empty', 'libEmpty');
-    set('str-nav-back', 'navBack'); set('str-nav-toc', 'navToc'); set('str-nav-bookmark', 'navBookmark'); set('str-nav-text', 'navText'); set('str-nav-full', 'navFull');
-    set('str-reader-loading', 'readerLoading');
-    set('str-toc-title', 'tocTitle'); set('str-bookmark-title', 'navBookmark'); set('str-set-title', 'setTitle');
-    set('str-set-search', 'search'); set('str-set-theme', 'setTheme'); set('str-set-size', 'setSize'); set('str-set-align', 'setAlign'); set('str-set-font', 'setFont');
-    set('str-ai-title', 'aiTitle'); set('str-ai-loading', 'aiLoading');
-    set('str-bookmark-empty', 'bookmarkEmpty');
-    set('str-wel-title', 'welTitle'); set('str-wel-desc', 'welDesc'); set('str-wel-backup', 'welBackup'); set('str-wel-backup-desc', 'welBackupDesc'); set('str-wel-format', 'welFormat'); set('str-wel-format-desc', 'welFormatDesc'); set('str-wel-privacy', 'welPrivacy'); set('str-wel-privacy-desc', 'welPrivacyDesc'); set('str-wel-btn', 'welBtn');
-    set('str-set-main-title', 'settings'); set('str-set-palette', 'setPalette'); set('str-set-lang', 'setLang'); set('str-set-data', 'setData'); set('str-set-info', 'setInfo'); set('str-btn-backup', 'btnBackup'); set('str-btn-restore', 'btnRestore'); set('str-btn-info', 'btnInfo'); set('str-btn-update', 'btnUpdate'); set('str-btn-donate', 'btnDonate'); set('str-btn-close', 'btnClose');
-    set('str-raw-bak-title', 'rawBakTitle'); set('str-raw-bak-desc', 'rawBakDesc'); set('str-raw-bak-btn-copy', 'rawBakCopy'); set('str-raw-bak-btn-close', 'rawBakClose');
-    set('str-raw-res-title', 'rawResTitle'); set('str-raw-res-desc', 'rawResDesc'); set('str-raw-res-btn-file', 'rawResFile'); set('str-raw-res-btn-process', 'rawResProcess'); set('str-raw-res-btn-close', 'rawResClose');
-    set('str-edit-title', 'editTitle'); set('str-edit-book-title', 'editBookTitle'); set('str-edit-book-cover', 'editBookCover'); set('str-edit-book-shape', 'editBookShape'); set('str-edit-cancel', 'editCancel'); set('str-edit-save', 'editSave');
-    set('str-opt-select', 'optSelect'); set('str-opt-edit', 'optEdit'); set('str-opt-delete', 'optDelete'); set('str-opt-cancel', 'optCancel');
-    set('str-bookmark-cancel', 'editCancel'); set('str-bookmark-save', 'editSave');
-    
-    document.getElementById(`wiki-lang-${wikiLang}`).classList.add('nav-active');
-    
-    const inpSearch = document.getElementById('inbook-search-input');
-    if(inpSearch && d.searchPlaceholder) inpSearch.placeholder = d.searchPlaceholder;
+    showDialog("Hapus Bookmark", d.deleteNoteConfirm, "trash-2", [
+        { text: d.bookmarkCancel || "Batal", primary: false },
+        { text: d.delete || "Hapus", primary: true, action: () => {
+            window.closeDialog();
+            window.deleteAnnotationById(editingAnnotId);
+            history.back(); 
+        }}
+    ]);
 }
 
+window.deleteAnnotationById = async function(annotId) {
+    if(!annotId || !activeBookId) return; 
+    const bookIndex = library.findIndex(b => b.id === activeBookId); if(bookIndex === -1) return;
+    const book = library[bookIndex]; 
+    const annotIndex = book.annotations.findIndex(a => a.id === annotId); if(annotIndex === -1) return;
+    
+    const nodeIdx = book.annotations[annotIndex].nodeIdx; 
+    book.annotations.splice(annotIndex, 1);
+    await localforage.setItem('pdf_epub_master', library);
+    
+    const nodeEl = document.getElementById(`node-${nodeIdx}`);
+    if(nodeEl && book.nodes[nodeIdx]) {
+        const currentAnnots = book.annotations.filter(a => a.nodeIdx === nodeIdx);
+        nodeEl.innerHTML = window.renderNodeText(book.nodes[nodeIdx].text, currentAnnots);
+    }
 
-// 7. FULLSCREEN LOGIC
-window.toggleFullscreenReading = function() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {});
-        document.getElementById('reader-floating-header').classList.add('-translate-y-full', 'opacity-0');
-        document.getElementById('reader-bottom-bar').classList.add('translate-y-full');
+    window.renderBookmarkPanel();
+    updateStatistics(); 
+};
+
+window.renderBookmarkPanel = function() {
+    if(!DOM.bookmarkList || !DOM.bookmarkPanel || !activeBookId) return;
+    const book = library.find(b => b.id === activeBookId);
+    if (!book) return;
+
+    // Reset search input tiap kali panel di-render ulang
+    const searchInput = document.getElementById('bookmark-search-input');
+    if (searchInput) searchInput.value = '';
+
+    _renderBookmarkList(book.annotations || []);
+};
+
+// Fungsi internal render list, bisa dipanggil dengan filter
+function _renderBookmarkList(annotations) {
+    if(!DOM.bookmarkList) return;
+    DOM.bookmarkList.innerHTML = '';
+    const emptyState = document.getElementById('bookmark-empty');
+
+    const bookmarks = [...annotations].sort((a,b) => a.nodeIdx - b.nodeIdx);
+
+    if(bookmarks.length === 0) {
+        if(emptyState) emptyState.classList.remove('hidden');
     } else {
-        document.exitFullscreen();
-        document.getElementById('reader-floating-header').classList.remove('-translate-y-full', 'opacity-0');
-        document.getElementById('reader-bottom-bar').classList.remove('translate-y-full');
-    }
-}
-document.addEventListener('fullscreenchange', () => {
-    const isFull = !!document.fullscreenElement;
-    document.getElementById('reader-floating-header').classList.toggle('-translate-y-full', isFull);
-    document.getElementById('reader-floating-header').classList.toggle('opacity-0', isFull);
-    document.getElementById('reader-bottom-bar').classList.toggle('translate-y-full', isFull);
-});
-
-// 8. BACKUP & RESTORE DATA (NATIVE OPTIMIZED)
-window.exportData = async function() {
-    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
-    try {
-        const master = await localforage.getItem('pdf_epub_master') || [];
-        // Kita juga harus backup konten yang dipisah (nodes)
-        let fullData = [...master];
+        if(emptyState) emptyState.classList.add('hidden');
         
-        showDialog("Memproses Backup...", "Harap tunggu, sedang menggabungkan data buku.", "loader", []);
-        
-        for (let i = 0; i < fullData.length; i++) {
-            if (fullData[i].hasSeparateContent) {
-                const nodes = await localforage.getItem(`book_content_${fullData[i].id}`);
-                if (nodes) fullData[i].nodes = nodes; // Gabungin sementara buat dibackup
-            }
-        }
-        
-        const dataStr = JSON.stringify(fullData);
-        history.back(); // Tutup dialog loader
-        
-        setTimeout(() => {
-            document.getElementById('raw-backup-textarea').value = dataStr;
-            pushAppHistory('raw-backup-modal');
-            openModalRaw('raw-backup-modal', 'raw-backup-sheet');
-        }, 300);
-        
-    } catch(e) {
-        history.back();
-        setTimeout(() => showDialog("Error Backup", e.message, "alert-triangle", [{text:"Tutup"}]), 300);
-    }
-}
-
-window.copyRawBackup = function() {
-    const ta = document.getElementById('raw-backup-textarea');
-    ta.select(); document.execCommand('copy');
-    showDialog("Berhasil!", "Teks backup telah disalin ke clipboard.", "check-circle", [{text: "Ok", primary: true}]);
-}
-
-window.openRestoreOptions = function() {
-    document.getElementById('raw-restore-textarea').value = '';
-    pushAppHistory('raw-restore-modal');
-    openModalRaw('raw-restore-modal', 'raw-restore-sheet');
-}
-
-window.processRawRestore = async function() {
-    const val = document.getElementById('raw-restore-textarea').value.trim();
-    if(!val) return;
-    try {
-        const data = JSON.parse(val);
-        if(Array.isArray(data)) {
-            showDialog("Memulihkan Data...", "Harap tunggu.", "loader", []);
+        bookmarks.forEach(bm => {
+            const btn = document.createElement('div');
+            btn.className = "group relative flex flex-col p-4 mb-3 rounded-3xl bg-m3-surface shadow-sm overflow-hidden text-left transition-all hover:shadow-md cursor-pointer";
             
-            // Pisahin lagi pas restore
-            for (let i = 0; i < data.length; i++) {
-                if (data[i].nodes && data[i].nodes.length > 0) {
-                    await localforage.setItem(`book_content_${data[i].id}`, data[i].nodes);
-                    delete data[i].nodes; // Hapus dari master biar enteng
-                    data[i].hasSeparateContent = true;
+            btn.onclick = () => {
+                const markTarget = document.querySelector(`mark[data-id="${bm.id}"]`);
+                const paragraphTarget = document.getElementById(`node-${bm.nodeIdx}`);
+                const container = DOM.readContent;
+                
+                if (container) {
+                    let targetEl = markTarget || paragraphTarget;
+                    if (targetEl) {
+                        const cRect = container.getBoundingClientRect();
+                        const tRect = targetEl.getBoundingClientRect();
+                        const offset = tRect.top - cRect.top + container.scrollTop - (cRect.height / 2) + (tRect.height / 2);
+                        
+                        container.scrollTo({ top: offset, behavior: 'smooth' });
+                    }
                 }
+                history.back(); 
+            };
+            
+            let iconColorCls = "text-yellow-600 bg-yellow-500/20 dark:text-yellow-400 dark:bg-yellow-400/20";
+            let quoteBgCls = "bg-yellow-500/10 text-yellow-800 dark:bg-yellow-400/10 dark:text-yellow-100";
+            
+            if (bm.color === 'green') { 
+                iconColorCls = "text-green-600 bg-green-500/20 dark:text-green-400 dark:bg-green-400/20"; 
+                quoteBgCls = "bg-green-500/10 text-green-800 dark:bg-green-400/10 dark:text-green-100";
             }
+            else if (bm.color === 'pink') { 
+                iconColorCls = "text-pink-600 bg-pink-500/20 dark:text-pink-400 dark:bg-pink-400/20"; 
+                quoteBgCls = "bg-pink-500/10 text-pink-800 dark:bg-pink-400/10 dark:text-pink-100";
+            }
+
+            let noteHtml = bm.note ? `
+                <div class="mt-3 p-3 rounded-2xl bg-m3-surfaceVariant text-m3-onSurfaceVariant font-bold text-xs leading-relaxed">
+                    ${bm.note}
+                </div>` : '';
             
-            await localforage.setItem('pdf_epub_master', data);
-            library = data;
+            let quoteHtml = `
+                <div class="mt-2 p-3 rounded-2xl ${quoteBgCls}">
+                    <span class="text-[11px] font-medium opacity-90 italic line-clamp-2 leading-relaxed">"${bm.text}"</span>
+                </div>
+            `;
             
-            history.back(); // Tutup loader
-            setTimeout(() => {
-                _closeModalAction('raw-restore-modal', 'raw-restore-sheet', true);
-                renderLibrary();
-                showDialog("Berhasil", "Data berhasil dipulihkan.", "check-circle", [{text: "Tutup", primary: true}]);
-            }, 300);
-        } else { throw new Error("Format tidak valid."); }
-    } catch(e) { showDialog("Gagal Restore", "Teks JSON tidak valid.", "alert-triangle", [{text: "Tutup"}]); }
-}
+            let metaText = bm.meta || 'Chapter';
+            if (metaText.length > 15) metaText = metaText.substring(0, 15) + '...';
 
-window.importDataFile = function(e) {
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        document.getElementById('raw-restore-textarea').value = e.target.result;
-    };
-    reader.readAsText(file);
-}
+            btn.innerHTML = `
+                <div class="flex items-start justify-between gap-2 mb-2 w-full">
+                    <span class="text-sm font-bold text-m3-onSurface leading-tight line-clamp-2 pr-6">${bm.title}</span>
+                </div>
+                
+                <div class="flex items-center gap-1.5 w-max px-2.5 py-1 rounded-lg ${iconColorCls}">
+                    <i data-lucide="bookmark" class="w-3 h-3 fill-current"></i>
+                    <span class="text-[9px] font-bold uppercase tracking-wider">${metaText}</span>
+                </div>
+                
+                ${noteHtml}
+                ${quoteHtml}
+            `;
 
-// 9. GEMINI AI CONFIG
-window.saveGeminiKey = function() {
-    const key = document.getElementById('gemini-api-key').value.trim();
-    localStorage.setItem('gemini_api_key', key);
-    const d = typeof i18n !== 'undefined' ? (i18n[wikiLang] || i18n['id']) : {};
-    showDialog("Berhasil", d.keySaved || "API Key berhasil disimpan.", "check-circle", [{text: "Ok", primary: true}]);
-}
-window.saveGeminiModel = function() {
-    const mod = document.getElementById('gemini-model-select').value;
-    localStorage.setItem('gemini_model', mod);
-}
+            const delBtn = document.createElement('button');
+            delBtn.className = "absolute top-4 right-4 w-7 h-7 rounded-full text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-center";
+            delBtn.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i>`;
+            delBtn.onclick = (e) => {
+                e.stopPropagation(); 
+                window.deleteAnnotationById(bm.id);
+            };
 
-// 10. OTA UPDATER (GitHub JSON)
-window.checkForUpdate = async function() {
-    const btn = document.getElementById('btn-update-app');
-    const icon = document.getElementById('icon-update-app');
-    if(!btn || !icon) return;
-    
-    icon.classList.add('animate-spin');
-    
-    try {
-        const res = await fetch(window.UPDATE_URL);
-        const data = await res.json();
-        icon.classList.remove('animate-spin');
-        
-        if (data.version && data.version !== window.APP_VERSION) {
-            showDialog("Pembaruan Tersedia!", `Versi baru (${data.version}) tersedia. Lakukan pembaruan untuk fitur terbaik.`, "download-cloud", [
-                { text: "Nanti" },
-                { text: "Download", primary: true, action: () => window.open(window.RELEASES_URL, '_blank') }
-            ]);
-        } else {
-            showDialog("Sudah Terbaru", "Anda menggunakan versi paling mutakhir.", "check-circle", [{text: "Tutup"}]);
-        }
-    } catch(e) {
-        icon.classList.remove('animate-spin');
-        showDialog("Error", "Gagal mengecek pembaruan.", "wifi-off", [{text: "Tutup"}]);
-    }
-}
-setTimeout(() => {
-    const vEl = document.getElementById('app-version-display');
-    if(vEl) vEl.textContent = `v${window.APP_VERSION}`;
-}, 500);
-
-// 11. HARDWARE BACK BUTTON (ROUTING HISTORY)
-let appHistory = ['library'];
-
-window.pushAppHistory = function(state) {
-    if (appHistory[appHistory.length - 1] === state) return;
-    appHistory.push(state);
-    window.history.pushState({page: state}, '');
-}
-
-function handleHardwareBack(event) {
-    if (appHistory.length <= 1) return;
-    const currentState = appHistory.pop();
-    
-    if (currentState.startsWith('panel-')) _executeClosePanel();
-    else if (currentState === 'reader') closeReader();
-    else if (currentState === 'b-opt-modal') _closeModalAction('b-opt-modal', 'b-opt-sheet', false);
-    else if (currentState === 'edit-modal') _closeModalAction('edit-modal', 'edit-sheet', false);
-    else if (currentState === 'global-settings-modal') _closeModalAction('global-settings-modal', 'global-settings-sheet', false);
-    else if (currentState === 'welcome-modal') _closeModalAction('welcome-modal', 'welcome-sheet', false);
-    else if (currentState === 'raw-backup-modal') _closeModalAction('raw-backup-modal', 'raw-backup-sheet', false);
-    else if (currentState === 'raw-restore-modal') _closeModalAction('raw-restore-modal', 'raw-restore-sheet', false);
-    else if (currentState === 'bookmark-modal') _closeModalAction('bookmark-modal', 'bookmark-sheet', false);
-    else if (currentState === 'ai-modal') window.closeAiModal(true);
-}
-
-// 12. UTILITY MODALS & DIALOGS
-window.openModal = function(mId, sId, avoidHistory = false) {
-    if(!avoidHistory) pushAppHistory(mId);
-    openModalRaw(mId, sId);
-}
-
-function openModalRaw(mId, sId) {
-    const m = document.getElementById(mId); const s = document.getElementById(sId);
-    m.classList.remove('hidden');
-    requestAnimationFrame(() => { m.classList.remove('opacity-0'); s.classList.remove('translate-y-full', 'scale-75', 'translate-y-12'); });
-}
-
-window.closeWelcome = function() {
-    localStorage.setItem('welcome_seen_v2', 'true');
-    history.back();
-}
-window.closeEditModal = function() { history.back(); }
-
-window._closeModalAction = function(mId, sId, avoidHistoryPop = false) {
-    if(avoidHistoryPop) history.back();
-    else {
-        const m = document.getElementById(mId); const s = document.getElementById(sId);
-        m.classList.add('opacity-0'); 
-        if(s.classList.contains('translate-y-full')) s.classList.add('translate-y-full'); else s.classList.add('scale-75', 'translate-y-12');
-        setTimeout(() => m.classList.add('hidden'), 300);
-    }
-}
-
-if (!localStorage.getItem('welcome_seen_v2')) {
-    setTimeout(() => { openModal('welcome-modal', 'welcome-sheet'); }, 1000);
-}
-
-window.showDialog = function(title, message, iconName = 'info', actions = []) {
-    const d = document.getElementById('custom-dialog');
-    const s = document.getElementById('custom-dialog-sheet');
-    const actContainer = document.getElementById('dialog-actions');
-    
-    document.getElementById('dialog-title').textContent = title;
-    document.getElementById('dialog-message').textContent = message;
-    
-    const iconEl = document.getElementById('dialog-icon');
-    if (iconName === 'loader') {
-        iconEl.outerHTML = `<div id="dialog-icon" class="w-5 h-5 border-2 border-m3-onPrimaryContainer border-t-transparent rounded-full animate-spin"></div>`;
-    } else {
-        iconEl.outerHTML = `<i id="dialog-icon" data-lucide="${iconName}" class="w-5 h-5"></i>`;
+            btn.appendChild(delBtn);
+            DOM.bookmarkList.appendChild(btn);
+        });
         if(window.lucide) window.lucide.createIcons();
     }
-    
-    actContainer.innerHTML = '';
-    if (actions.length === 0) actions = [{ text: "Ok", primary: true }];
-    
-    actions.forEach(act => {
-        const btn = document.createElement('button');
-        btn.className = `px-5 py-2.5 font-bold rounded-full btn-morph text-sm `;
-        if (act.danger) btn.className += `bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400`;
-        else if (act.primary) btn.className += `bg-m3-primary text-m3-onPrimary`;
-        else btn.className += `bg-transparent text-m3-onSurface`;
-        
-        btn.textContent = act.text;
-        btn.onclick = () => {
-            if(act.action) act.action();
-            d.classList.add('opacity-0'); s.classList.add('scale-75');
-            setTimeout(() => d.classList.add('hidden'), 300);
-        };
-        actContainer.appendChild(btn);
-    });
-    
-    d.classList.remove('hidden');
-    requestAnimationFrame(() => { d.classList.remove('opacity-0'); s.classList.remove('scale-75'); });
 }
 
-// 13. PWA SETUP
+window.filterBookmarkPanel = function(query) {
+    const book = library.find(b => b.id === activeBookId);
+    if (!book) return;
+    const all = book.annotations || [];
+    const q = query.trim().toLowerCase();
+    const filtered = q ? all.filter(bm => (bm.title || '').toLowerCase().includes(q)) : all;
+    _renderBookmarkList(filtered);
+};
+
+// 12. SWIPE TO DISMISS LOGIC
+function setupSwipeToDismiss() {
+    const sheets = ['global-settings-sheet', 'b-opt-sheet', 'edit-sheet', 'bookmark-sheet', 'raw-backup-sheet', 'raw-restore-sheet', 'welcome-sheet'];
+    sheets.forEach(sheetId => {
+        const sheet = document.getElementById(sheetId);
+        if (!sheet) return;
+        let touchStartY = 0; let initialScrollTop = 0; let isPulling = false;
+        sheet.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY; initialScrollTop = sheet.scrollTop; sheet.style.transition = 'none'; 
+        }, { passive: true });
+        sheet.addEventListener('touchmove', (e) => {
+            if (initialScrollTop <= 0) {
+                const deltaY = e.touches[0].clientY - touchStartY;
+                if (deltaY > 0) { 
+                    isPulling = true; if(e.cancelable) e.preventDefault(); 
+                    sheet.style.transform = `translateY(${deltaY * 0.5}px)`; 
+                }
+            }
+        }, { passive: false });
+        sheet.addEventListener('touchend', (e) => {
+            if (!isPulling) return; isPulling = false;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
+            if (deltaY > 100) { 
+                sheet.style.transform = 'translateY(100%)'; 
+                setTimeout(() => { history.back(); setTimeout(() => { sheet.style.transform = ''; }, 100); }, 100);
+            } else { sheet.style.transform = ''; }
+        });
+    });
+
+    // ai-sheet: swipe dismiss HANYA dari drag handle / area header, bukan dari dalam konten scroll
+    const aiSheet = document.getElementById('ai-sheet');
+    if (aiSheet) {
+        // Drag handle = div abu-abu di atas (w-12 h-1.5), dan area header (flex items-center justify-between)
+        // Deteksi: touch mulai di 80px teratas sheet = area aman buat dismiss
+        let aiTouchStartY = 0; let aiIsPulling = false;
+        aiSheet.addEventListener('touchstart', (e) => {
+            aiTouchStartY = e.touches[0].clientY;
+            aiIsPulling = false;
+            aiSheet.style.transition = 'none';
+        }, { passive: true });
+        aiSheet.addEventListener('touchmove', (e) => {
+            // Cek apakah scroll internal (div.flex-1.overflow-y-auto) sudah scroll ke atas
+            const scrollableInner = aiSheet.querySelector('.overflow-y-auto');
+            const innerScrollTop = scrollableInner ? scrollableInner.scrollTop : 0;
+            const deltaY = e.touches[0].clientY - aiTouchStartY;
+            // Hanya aktifkan dismiss kalau: scroll inner udah di atas (0) DAN geser ke bawah
+            if (innerScrollTop <= 0 && deltaY > 0) {
+                aiIsPulling = true;
+                if(e.cancelable) e.preventDefault();
+                aiSheet.style.transform = `translateY(${deltaY * 0.5}px)`;
+            }
+        }, { passive: false });
+        aiSheet.addEventListener('touchend', (e) => {
+            if (!aiIsPulling) return; aiIsPulling = false;
+            const deltaY = e.changedTouches[0].clientY - aiTouchStartY;
+            aiSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
+            if (deltaY > 100) {
+                aiSheet.style.transform = 'translateY(100%)';
+                setTimeout(() => { history.back(); setTimeout(() => { aiSheet.style.transform = ''; }, 100); }, 100);
+            } else { aiSheet.style.transform = ''; }
+        });
+    }
+
+    const panels = ['toc-panel', 'settings-panel', 'bookmark-panel'];
+    panels.forEach(panelId => {
+        const panel = document.getElementById(panelId);
+        if(!panel) return;
+        let touchStartX = 0; let touchStartY = 0; let isSwipingPanel = false;
+        panel.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; panel.style.transition = 'none';
+        }, { passive: true });
+        panel.addEventListener('touchmove', (e) => {
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+            if (deltaX > 0 && deltaX > deltaY) { 
+                isSwipingPanel = true;
+                if(e.cancelable) e.preventDefault();
+                panel.style.transform = `translateX(${deltaX}px)`;
+            }
+        }, { passive: false }); 
+        panel.addEventListener('touchend', (e) => {
+            if (!isSwipingPanel) return; isSwipingPanel = false;
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.3s ease';
+            if (deltaX > 80) { 
+                panel.style.transform = 'translateX(100%)';
+                setTimeout(() => { history.back(); setTimeout(() => { panel.style.transform = ''; }, 100); }, 100);
+            } else { 
+                panel.style.transform = 'translateX(0)';
+            }
+        });
+    });
+}
+
+// 13. PWA & CAPACITOR SETUP
 if ('serviceWorker' in navigator) {
     const swCode = `
-    const CACHE_NAME = 'baca-pwa-v6';
+    const CACHE_NAME = 'baca-pwa-v5';
     self.addEventListener('install', (e) => {
         self.skipWaiting();
         e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll([
-            '/', 'libs/pdf.min.js', 'libs/pdf.worker.min.js', 'libs/localforage.min.js', 'libs/jszip.min.js', 'libs/lucide.js',
-            'css/output.css', 'js/config.js', 'js/reader.js', 'js/app.js'
+            '/', 'libs/tailwindcss.js', 'libs/pdf.min.js', 'libs/pdf.worker.min.js', 'libs/localforage.min.js', 'libs/jszip.min.js', 'libs/lucide.js',
+            'css/style.css', 'js/config.js', 'js/reader.js', 'js/app.js'
        ])));
     });
     self.addEventListener('fetch', (e) => { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); });
@@ -1252,6 +1842,16 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log("SW Error:", err));
 }
 
-// 14. INTERSECTION OBSERVER SETUP 
-function setupIntersectionObserver() {}
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        if (window.Capacitor && window.Capacitor.Plugins) {
+            const capApp = window.Capacitor.Plugins.App;
+            const capStatusBar = window.Capacitor.Plugins.StatusBar;
+            
+            if (capApp) capApp.addListener('backButton', () => { window.history.back(); });
+            if (capStatusBar) capStatusBar.hide().catch(()=>{});
+        }
+    }, 500);
+});
+
 
