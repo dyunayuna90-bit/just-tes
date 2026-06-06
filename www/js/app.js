@@ -346,11 +346,12 @@ window.saveGeminiKey = function() {
 function syncWikiLangUI() {
     const wid = document.getElementById('wiki-lang-id');
     const wen = document.getElementById('wiki-lang-en');
-    if(wid && wen) {
-        [wid, wen].forEach(el => { el.classList.remove('bg-m3-primary', 'text-m3-onPrimary'); el.classList.add('text-m3-onSurfaceVariant'); });
-        if (wikiLang === 'id') { wid.classList.add('bg-m3-primary', 'text-m3-onPrimary'); wid.classList.remove('text-m3-onSurfaceVariant'); }
-        else { wen.classList.add('bg-m3-primary', 'text-m3-onPrimary'); wen.classList.remove('text-m3-onSurfaceVariant'); }
-    }
+    const wes = document.getElementById('wiki-lang-es');
+    const allBtns = [wid, wen, wes].filter(Boolean);
+    allBtns.forEach(el => { el.classList.remove('bg-m3-primary', 'text-m3-onPrimary'); el.classList.add('text-m3-onSurfaceVariant'); });
+    if (wikiLang === 'id' && wid) { wid.classList.add('bg-m3-primary', 'text-m3-onPrimary'); wid.classList.remove('text-m3-onSurfaceVariant'); }
+    else if (wikiLang === 'es' && wes) { wes.classList.add('bg-m3-primary', 'text-m3-onPrimary'); wes.classList.remove('text-m3-onSurfaceVariant'); }
+    else if (wen) { wen.classList.add('bg-m3-primary', 'text-m3-onPrimary'); wen.classList.remove('text-m3-onSurfaceVariant'); }
 }
 
 // 5. CUSTOM DIALOG & MODALS
@@ -508,14 +509,14 @@ window.exportData = async function() {
     try {
         const data = await localforage.getItem('pdf_epub_master');
         if (!data || data.length === 0) {
-            showDialog("Info", wikiLang === 'id' ? "Ga ada buku untuk di-backup." : "No books to backup.", "info", [{ text: "Oke", primary: true }]);
+            showDialog("Info", d.libEmpty || "No books to backup.", "info", [{ text: "Oke", primary: true }]);
             return;
         }
 
         showDialog(
-            wikiLang === 'id' ? "Memproses Backup" : "Processing Backup",
-            wikiLang === 'id' ? "Mohon tunggu sebentar, menyiapkan file lu..." : "Please wait, preparing your file...",
-            "loader", 
+            wikiLang === 'id' ? "Memproses Backup" : wikiLang === 'es' ? "Procesando Copia de Seguridad" : "Processing Backup",
+            wikiLang === 'id' ? "Mohon tunggu sebentar, menyiapkan file lu..." : wikiLang === 'es' ? "Por favor espera, preparando tu archivo..." : "Please wait, preparing your file...",
+            "loader",
             []
         );
         
@@ -544,8 +545,8 @@ window.exportData = async function() {
                         });
                         
                         showDialog(
-                            wikiLang === 'id' ? "Backup Sukses" : "Backup Success", 
-                            wikiLang === 'id' ? `File backup berhasil disimpan di folder Documents HP lu.\nNama file: ${displayFileName}` : `Backup file saved in your device's Documents folder.\nFile name: ${displayFileName}`, 
+                            wikiLang === 'id' ? "Backup Sukses" : wikiLang === 'es' ? "Copia de Seguridad Exitosa" : "Backup Success", 
+                            wikiLang === 'id' ? `File backup berhasil disimpan di folder Documents HP lu.\nNama file: ${displayFileName}` : wikiLang === 'es' ? `Archivo guardado en la carpeta Documents de tu dispositivo.\nNombre: ${displayFileName}` : `Backup file saved in your device's Documents folder.\nFile name: ${displayFileName}`, 
                             "check-circle", 
                             [{ text: "Mantap", primary: true }]
                         );
@@ -573,20 +574,22 @@ window.exportData = async function() {
                         showDialog("Info Fallback", 
                             wikiLang === 'id' ? 
                             "Simpan file native gagal. Ini adalah teks mentahnya.\n\nCATATAN: Demi menghindari error sistem (ukuran file terlalu besar), data Sampul Buku otomatis DIHAPUS pada versi ini. Data teks buku tetap aman." : 
+                            wikiLang === 'es' ?
+                            "Guardado nativo fallido. Este es el texto sin formato.\n\nNOTA: Para evitar errores de memoria, las Portadas se ELIMINAN en esta versión. Los datos de texto están seguros." :
                             "Native file save failed. This is the raw text.\n\nNOTE: To prevent system memory errors, Book Covers are REMOVED in this version. Text data is safe.", 
-                            "info", [{ text: "Mengerti", primary: true }]);
+                            "info", [{ text: wikiLang === 'id' ? "Mengerti" : wikiLang === 'es' ? "Entendido" : "Got it", primary: true }]);
                     }, 400);
                 }, 350);
                 
             } catch (err) {
                 console.error("Backup failed:", err);
-                showDialog("Error", "Backup gagal: " + err.message, "alert-triangle", [{ text: "Tutup", primary: true }]);
+                showDialog("Error", (wikiLang === 'id' ? "Backup gagal: " : wikiLang === 'es' ? "Error en copia de seguridad: " : "Backup failed: ") + err.message, "alert-triangle", [{ text: wikiLang === 'es' ? "Cerrar" : "Tutup", primary: true }]);
             }
         }, 150);
 
     } catch (err) {
         console.error("Backup failed:", err);
-        showDialog("Error", "Backup gagal: " + err.message, "alert-triangle", [{ text: "Tutup", primary: true }]);
+        showDialog("Error", (wikiLang === 'id' ? "Backup gagal: " : wikiLang === 'es' ? "Error en copia de seguridad: " : "Backup failed: ") + err.message, "alert-triangle", [{ text: wikiLang === 'es' ? "Cerrar" : "Tutup", primary: true }]);
     }
 };
 
@@ -599,7 +602,7 @@ window.copyRawBackup = function() {
         document.execCommand('copy');
         const btnSpan = document.getElementById('str-raw-bak-btn-copy');
         const originalText = btnSpan.innerText;
-        btnSpan.innerText = wikiLang === 'id' ? "Berhasil Disalin!" : "Copied!";
+        btnSpan.innerText = wikiLang === 'id' ? "Berhasil Disalin!" : wikiLang === 'es' ? "¡Copiado!" : "Copied!";
         setTimeout(() => { btnSpan.innerText = originalText; }, 2000);
     } catch (err) {
         showDialog("Error", "Gagal menyalin otomatis. Silakan blok semua teks secara manual dan salin.", "alert-circle", [{ text: "Tutup", primary: true }]);
@@ -614,7 +617,7 @@ window.openRestoreOptions = function() {
 window.processRawRestore = function() {
     const val = document.getElementById('raw-restore-textarea').value.trim();
     if(!val) {
-        showDialog("Info", wikiLang === 'id' ? "Kotak teks masih kosong." : "Text box is empty.", "info", [{ text: "Oke", primary: true }]);
+        showDialog("Info", wikiLang === 'id' ? "Kotak teks masih kosong." : wikiLang === 'es' ? "El cuadro de texto está vacío." : "Text box is empty.", "info", [{ text: "Oke", primary: true }]);
         return;
     }
     executeRestoreLogic(val);
@@ -640,12 +643,12 @@ function executeRestoreLogic(jsonString) {
         if (!isValid) throw new Error("Data backup rusak atau tidak kompatibel.");
         
         showDialog(
-            wikiLang === 'id' ? "Konfirmasi Restore" : "Confirm Restore",
-            wikiLang === 'id' ? "PERINGATAN: Semua data buku saat ini akan ketimpa total. Yakin mau lanjut?" : "WARNING: Current books will be completely replaced. Continue?",
+            wikiLang === 'id' ? "Konfirmasi Restore" : wikiLang === 'es' ? "Confirmar Restauración" : "Confirm Restore",
+            wikiLang === 'id' ? "PERINGATAN: Semua data buku saat ini akan ketimpa total. Yakin mau lanjut?" : wikiLang === 'es' ? "ADVERTENCIA: Todos los libros actuales serán reemplazados. ¿Continuar?" : "WARNING: Current books will be completely replaced. Continue?",
             "alert-triangle",
             [
-                { text: "Batal", primary: false },
-                { text: "Lanjut", primary: true, action: async () => {
+                { text: wikiLang === 'es' ? "Cancelar" : "Batal", primary: false },
+                { text: wikiLang === 'es' ? "Continuar" : "Lanjut", primary: true, action: async () => {
                     window.closeDialog();
                     await localforage.setItem('pdf_epub_master', parsedData);
                     library = parsedData;
@@ -658,8 +661,8 @@ function executeRestoreLogic(jsonString) {
                     
                     setTimeout(() => {
                         showDialog(
-                            wikiLang === 'id' ? "Restore Berhasil!" : "Restore Success!",
-                            wikiLang === 'id' ? "Data aplikasi lu udah berhasil dipulihin." : "Your data has been successfully restored.",
+                            wikiLang === 'id' ? "Restore Berhasil!" : wikiLang === 'es' ? "¡Restauración Exitosa!" : "Restore Success!",
+                            wikiLang === 'id' ? "Data aplikasi lu udah berhasil dipulihin." : wikiLang === 'es' ? "Tus datos han sido restaurados correctamente." : "Your data has been successfully restored.",
                             "check-circle",
                             [{ text: "Oke", primary: true }]
                         );
@@ -669,7 +672,7 @@ function executeRestoreLogic(jsonString) {
         );
     } catch (err) {
         console.error("Restore failed:", err);
-        showDialog("Error", (wikiLang === 'id' ? "Gagal memulihkan: " : "Failed to restore: ") + err.message, "alert-circle", [{ text: "Tutup", primary: true }]);
+        showDialog("Error", (wikiLang === 'id' ? "Gagal memulihkan: " : wikiLang === 'es' ? "Error al restaurar: " : "Failed to restore: ") + err.message, "alert-circle", [{ text: wikiLang === 'es' ? "Cerrar" : "Tutup", primary: true }]);
     }
 }
 
@@ -947,9 +950,9 @@ window.executeBatchDelete = async function() {
     if(selectedForDelete.length === 0) return;
     const d = i18n[wikiLang] || i18n['id'];
     
-    showDialog("Hapus Buku", d.deleteConfirm, "trash-2", [
-        { text: "Batal", primary: false },
-        { text: "Hapus", primary: true, action: async () => {
+    showDialog(wikiLang === 'es' ? "Eliminar Libros" : "Hapus Buku", d.deleteConfirm, "trash-2", [
+        { text: d.cancel || "Batal", primary: false },
+        { text: d.delete || "Hapus", primary: true, action: async () => {
             window.closeDialog();
             const toDeleteSet = new Set(selectedForDelete.map(String));
             library = library.filter(b => !toDeleteSet.has(String(b.id)));
@@ -963,9 +966,9 @@ window.executeBatchDelete = async function() {
 window.triggerDeleteView = async function() {
     if(!activeOptsId) return;
     const d = i18n[wikiLang] || i18n['id'];
-    showDialog("Hapus Permanen", d.deleteConfirm, "trash-2", [
-        { text: "Batal", primary: false },
-        { text: "Hapus", primary: true, action: async () => {
+    showDialog(wikiLang === 'es' ? "Eliminar Permanentemente" : "Hapus Permanen", d.deleteConfirm, "trash-2", [
+        { text: d.cancel || "Batal", primary: false },
+        { text: d.delete || "Hapus", primary: true, action: async () => {
             window.closeDialog();
             library = library.filter(b => !selectedForDelete.includes(b.id) && b.id !== activeOptsId); 
             await localforage.setItem('pdf_epub_master', library); 
@@ -1481,7 +1484,7 @@ window.copySelection = function() {
     if (!text) return;
     window.hideSelectionMenu();
     window.getSelection().removeAllRanges();
-    showToast(wikiLang === 'id' ? 'Tersalin!' : 'Copied!');
+    showToast(wikiLang === 'id' ? 'Tersalin!' : wikiLang === 'es' ? '¡Copiado!' : 'Copied!');
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).catch(() => {
             const ta = document.createElement('textarea');
@@ -1549,7 +1552,7 @@ window.saveBookmarkAnnotation = function() {
         const totalNodes = book.nodes.length;
         const pct = Math.round(((currentSelection.nodeIdx + 1) / totalNodes) * 100);
 
-        let closestChapterName = wikiLang === 'id' ? "Bagian Buku" : "Book Section";
+        let closestChapterName = wikiLang === 'id' ? "Bagian Buku" : wikiLang === 'es' ? "Sección del Libro" : "Book Section";
         for (let i = currentSelection.nodeIdx; i >= 0; i--) {
             if (book.nodes[i].tag === 'h1' || book.nodes[i].tag === 'h2') {
                 closestChapterName = book.nodes[i].text;
@@ -1565,7 +1568,7 @@ window.saveBookmarkAnnotation = function() {
             endOff: currentSelection.endOff,
             text: currentSelection.text, 
             color: activeNoteColor, 
-            title: titleVal || (wikiLang === 'id' ? "Bookmark Baru" : "New Bookmark"), 
+            title: titleVal || (wikiLang === 'id' ? "Bookmark Baru" : wikiLang === 'es' ? "Nuevo Marcador" : "New Bookmark"), 
             note: noteVal,
             meta: `${chapterPreview} — ${pct}%`
         };
