@@ -8,31 +8,101 @@ if (typeof pdfjsLib !== 'undefined') {
 // 1. EVENT LISTENER UNTUK UPLOAD BUKU & PENCARIAN
 let inbookSearchTimeout;
 document.addEventListener("DOMContentLoaded", () => {
-    // Listener Upload File (PDF/EPUB)
+    // Listener Upload File (PDF/EPUB/TXT/MD) — Multi-file batch queue
     const fileInput = document.getElementById('doc-upload');
     if (fileInput) {
         fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            const originalFilename = file.name; 
-            const ext = originalFilename.split('.').pop().toLowerCase(); 
-            const bookTitle = originalFilename.replace(/\.[^/.]+$/, "");
-            
-            DOM.load.classList.remove('hidden'); 
-            DOM.loadBar.style.width = '0%'; 
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+
+            const lang = typeof wikiLang !== 'undefined' ? wikiLang : 'id';
+            const d = (typeof i18n !== 'undefined' ? (i18n[lang] || i18n['id']) : {});
+
+            DOM.load.classList.remove('hidden');
+            DOM.loadBar.style.width = '0%';
             DOM.loadPct.textContent = '0%';
 
-            try {
-                if (ext === 'pdf') await handlePdf(file, bookTitle);
-                else if (ext === 'epub') await handleEpub(file, bookTitle);
-                else throw new Error("Hanya PDF/EPUB.");
-            } catch (err) { 
-                showDialog("Gagal Buka Buku", err.message, "alert-triangle", [{text: "Tutup", primary: true}]);
-                console.error(err); 
-            } 
-            finally { 
-                setTimeout(() => { DOM.load.classList.add('hidden'); }, 1000); 
-                e.target.value = ''; 
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const originalFilename = file.name;
+                const ext = originalFilename.split('.').pop().toLowerCase();
+                const bookTitle = originalFilename.replace(/\.[^/.]+$/, "");
+
+                // Update teks loading per file kalau lebih dari 1
+                if (files.length > 1) {
+                    const progressLabel = lang === 'id'
+                        ? `Membaca file ${i + 1} dari ${files.length}...`
+                        : lang === 'es'
+                        ? `Leyendo archivo ${i + 1} de ${files.length}...`
+                        : `Reading file ${i + 1} of ${files.length}...`;
+                    DOM.loadTxt.textContent = progressLabel;
+                } else {
+                    DOM.loadTxt.textContent = d.loadingDocs || 'Reading Document...';
+                }
+
+                DOM.loadBar.style.width = '0%';
+                DOM.loadPct.textContent = '0%';
+
+                try {
+                    if (ext === 'pdf') await handlePdf(file, bookTitle);
+                    else if (ext === 'epub') await handleEpub(file, bookTitle);
+                    else if (ext === 'txt') await handleTxt(file, bookTitle);
+                    else if (ext === 'md') await handleMd(file, bookTitle);
+                    else throw new Error(
+                        lang === 'id' ? `Format .${ext} tidak didukung.`
+                        : lang === 'es' ? `Formato .${ext} no soportado.`
+                        : `Format .${ext} is not supported.`
+                    );
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                    console.error(`Gagal proses file: ${originalFilename}`, err);
+                    // Kalau multi-file, jangan stop — tampilkan error per file lalu lanjut
+                    if (files.length > 1) {
+                        const errTitle = lang === 'es' ? `Error: ${originalFilename}` : `Gagal: ${originalFilename}`;
+                        showDialog(errTitle, err.message, "alert-triangle", [{ text: lang === 'es' ? "Continuar" : "Lanjut", primary: true }]);
+                        // Tunggu user dismiss dialog sebelum lanjut ke file berikutnya
+                        await new Promise(resolve => {
+                            const orig = window.closeDialog;
+                            window.closeDialog = function(fromHistory = false) {
+                                window.closeDialog = orig;
+                                orig(fromHistory);
+                                resolve();
+                            };
+                        });
+                    } else {
+                        showDialog(
+                            lang === 'es' ? "Error al Abrir" : "Gagal Buka Buku",
+                            err.message, "alert-triangle",
+                            [{ text: lang === 'es' ? "Cerrar" : "Tutup", primary: true }]
+                        );
+                    }
+                }
             }
+
+            setTimeout(() => { DOM.load.classList.add('hidden'); }, 800);
+
+            // Kalau multi-file, tampilkan ringkasan setelah semua selesai
+            if (files.length > 1 && failCount === 0) {
+                const lang2 = typeof wikiLang !== 'undefined' ? wikiLang : 'id';
+                const msg = lang2 === 'id'
+                    ? `${successCount} buku berhasil ditambahkan ke perpustakaan.`
+                    : lang2 === 'es'
+                    ? `${successCount} libros añadidos a la biblioteca.`
+                    : `${successCount} books added to your library.`;
+                setTimeout(() => {
+                    showDialog(
+                        lang2 === 'id' ? "Selesai!" : lang2 === 'es' ? "¡Listo!" : "Done!",
+                        msg, "check-circle",
+                        [{ text: "Oke", primary: true }]
+                    );
+                }, 900);
+            }
+
+            e.target.value = '';
         });
     }
 
@@ -367,6 +437,106 @@ function resolveRelativePath(base, relative) {
     return stack.join('/');
 }
 
+// 3b. FUNGSI BACA TXT
+async function handleTxt(file, bookTitle) {
+    DOM.loadBar.style.width = '30%';
+    DOM.loadPct.textContent = '30%';
+
+    const text = await file.text();
+    const parsedNodes = [];
+
+    // Split per baris, gabungkan baris kosong jadi pemisah paragraf
+    const lines = text.split('\n');
+    let currentParagraph = '';
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed === '') {
+            if (currentParagraph.trim().length > 0) {
+                parsedNodes.push({ tag: 'p', text: currentParagraph.trim().replace(/\s+/g, ' ') });
+                currentParagraph = '';
+            }
+        } else {
+            currentParagraph += (currentParagraph ? ' ' : '') + trimmed;
+        }
+    });
+    // Sisa paragraf terakhir
+    if (currentParagraph.trim().length > 0) {
+        parsedNodes.push({ tag: 'p', text: currentParagraph.trim().replace(/\s+/g, ' ') });
+    }
+
+    DOM.loadBar.style.width = '100%';
+    DOM.loadPct.textContent = '100%';
+
+    if (parsedNodes.length === 0) throw new Error('File teks kosong atau tidak bisa dibaca.');
+
+    library.push({ id: Date.now().toString(), type: 'txt', title: bookTitle, nodes: parsedNodes, pages: 1, progressPct: 0, lastReadId: null, coverBase64: null, shape: 'square' });
+    await localforage.setItem('pdf_epub_master', library);
+    renderLibrary();
+}
+
+// 3c. FUNGSI BACA MD (MARKDOWN)
+async function handleMd(file, bookTitle) {
+    DOM.loadBar.style.width = '30%';
+    DOM.loadPct.textContent = '30%';
+
+    if (typeof marked === 'undefined') throw new Error('Library marked.js tidak ditemukan. Pastikan libs/marked.min.js sudah ada.');
+
+    const text = await file.text();
+
+    // Konfigurasi marked: jangan sanitize, biarkan HTML apa adanya
+    marked.setOptions({ breaks: true, gfm: true });
+
+    DOM.loadBar.style.width = '60%';
+    DOM.loadPct.textContent = '60%';
+
+    // Parse markdown jadi HTML string
+    const htmlString = marked.parse(text);
+
+    // Parse HTML hasil marked ke DOM, lalu ekstrak nodes
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    const parsedNodes = [];
+
+    const validTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre', 'hr'];
+
+    doc.body.querySelectorAll(validTags.join(',')).forEach(el => {
+        const tag = el.tagName.toLowerCase();
+
+        // HR jadi pemisah visual (simpan sebagai p kosong dengan marker)
+        if (tag === 'hr') {
+            parsedNodes.push({ tag: 'p', text: '—' });
+            return;
+        }
+
+        // PRE/CODE block: ambil teks mentah
+        if (tag === 'pre') {
+            const codeText = el.textContent.trim();
+            if (codeText.length > 0) parsedNodes.push({ tag: 'p', text: codeText });
+            return;
+        }
+
+        let text = el.textContent.trim().replace(/\s+/g, ' ');
+        if (text.length === 0) return;
+
+        let finalTag = 'p';
+        if (tag === 'h1') finalTag = 'h1';
+        else if (['h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) finalTag = 'h2';
+        else if (tag === 'blockquote') finalTag = 'p';
+
+        parsedNodes.push({ tag: finalTag, text: text });
+    });
+
+    DOM.loadBar.style.width = '100%';
+    DOM.loadPct.textContent = '100%';
+
+    if (parsedNodes.length === 0) throw new Error('File Markdown kosong atau tidak bisa diparsing.');
+
+    library.push({ id: Date.now().toString(), type: 'md', title: bookTitle, nodes: parsedNodes, pages: 1, progressPct: 0, lastReadId: null, coverBase64: null, shape: 'square' });
+    await localforage.setItem('pdf_epub_master', library);
+    renderLibrary();
+}
+
 // 4. LOOKUP DICTIONARY — Orchestrator Wikipedia + Gemini
 window.lookupDictionary = function() {
     const savedText = currentSelection.text;
@@ -410,7 +580,7 @@ window.lookupDictionary = function() {
     });
 
     // Fetch Wikipedia
-    const wikiLangCode = wikiLang === 'id' ? 'id' : 'en';
+    const wikiLangCode = wikiLang === 'id' ? 'id' : wikiLang === 'es' ? 'es' : 'en';
     const wikiQuery = encodeURIComponent(savedText.split(' ').slice(0, 4).join(' '));
     fetch(`https://${wikiLangCode}.wikipedia.org/api/rest_v1/page/summary/${wikiQuery}`)
         .then(r => r.json())
@@ -425,14 +595,20 @@ window.lookupDictionary = function() {
                 `;
                 if (window.lucide) window.lucide.createIcons();
             } else {
-                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${wikiLang === 'id' ? 'Tidak ditemukan di Wikipedia.' : 'Not found on Wikipedia.'}</p>`;
+                const notFoundMsg = wikiLang === 'id' ? 'Tidak ditemukan di Wikipedia.'
+                    : wikiLang === 'es' ? 'No encontrado en Wikipedia.'
+                    : 'Not found on Wikipedia.';
+                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${notFoundMsg}</p>`;
             }
             wikiContent.classList.remove('hidden');
         })
         .catch(() => {
             if (wikiLoading) wikiLoading.classList.add('hidden');
             if (wikiContent) {
-                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${wikiLang === 'id' ? 'Gagal memuat Wikipedia.' : 'Failed to load Wikipedia.'}</p>`;
+                const failMsg = wikiLang === 'id' ? 'Gagal memuat Wikipedia.'
+                    : wikiLang === 'es' ? 'Error al cargar Wikipedia.'
+                    : 'Failed to load Wikipedia.';
+                wikiContent.innerHTML = `<p class="text-sm opacity-50 font-medium">${failMsg}</p>`;
                 wikiContent.classList.remove('hidden');
             }
         });
@@ -442,6 +618,8 @@ window.lookupDictionary = function() {
         const modelVersion = localStorage.getItem('gemini_model') || 'gemini-2.5-flash-preview-05-20';
         let langInstruction = wikiLang === 'id'
             ? 'Gunakan bahasa Indonesia. Jelaskan arti, konteks, dan berikan contoh kalimat singkat. Tulis dalam paragraf biasa, tanpa poin atau bullet. Langsung ke penjelasan tanpa kata pembuka.'
+            : wikiLang === 'es'
+            ? 'Usa el español. Explica el significado, contexto, y da un ejemplo de oración corta. Escribe en párrafos normales, sin puntos ni viñetas. Ve directo a la explicación sin frases introductorias.'
             : 'Use English. Explain the meaning, context, and provide a short example sentence. Write in plain paragraphs, no bullet points. No introductory phrases, go straight to the explanation.';
         let promptText = `Provide a concise dictionary definition and explanation for: "${savedText}". ${langInstruction}`;
 
