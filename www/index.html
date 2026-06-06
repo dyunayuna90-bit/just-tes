@@ -10,23 +10,23 @@
     <meta name="theme-color" content="#1C1B1E">
     <title>Baca.</title>
     
-    <!-- External Libs (Tailwind Runtime dihapus, HP jadi lega) -->
+    <!-- External Libs -->
+    <script src="libs/tailwindcss.js"></script>
     <script src="libs/pdf.min.js"></script>
     <script src="libs/localforage.min.js"></script>
     <script src="libs/jszip.min.js"></script>
     <script src="libs/lucide.js"></script>
 
-    <!-- Konfigurasi Statis (Palet, i18n) -->
+    <!-- Konfigurasi Statis (Tailwind, Palet, i18n) -->
     <script src="js/config.js"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Space+Mono&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Merriweather:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Space+Mono&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
     
-    <!-- CSS Terpisah & Tema Dinamis (Sekarang panggil output.css hasil compile) -->
-    <link rel="stylesheet" href="css/output.css">
+    <!-- CSS Terpisah & Tema Dinamis -->
+    <link rel="stylesheet" href="css/style.css">
     <style id="dynamic-theme"></style>
 </head>
 <body class="font-sans flex flex-col relative">
@@ -36,8 +36,8 @@
         
         <header id="main-header" class="flex-none sticky top-0 z-40 bg-m3-bg pt-[calc(env(safe-area-inset-top,0px)+4.5rem)] pb-5 px-5 transition-shadow duration-300">
             <div id="title-area" class="mb-4">
-                <h1 class="text-4xl font-bold tracking-tighter mb-1 text-m3-onBg">Baca.</h1>
-                <p id="library-count" class="text-m3-onSurfaceVariant text-sm font-bold">0 Books</p>
+                <h1 class="text-4xl font-black tracking-tighter text-m3-onBg" style="font-family: 'Outfit', sans-serif;">Baca.</h1>
+                <!-- JUMLAH BUKU DI BAWAH HEADER SUDAH DIHAPUS -->
             </div>
             
             <div id="search-area" class="search-row transition-shadow duration-300">
@@ -62,6 +62,39 @@
                     <div id="loading-bar" class="absolute h-full w-0 bg-m3-primary progress-smooth rounded-full"></div>
                 </div>
             </div>
+
+            <!-- STATISTIK USER (M3 Expressive Card - Compact) -->
+            <section id="statistics-section" class="mb-8 mt-1 transition-all duration-300 origin-top overflow-hidden">
+                <div class="bg-m3-secondaryContainer text-m3-onSecondaryContainer rounded-[28px] p-4 shadow-sm relative flex flex-col justify-center min-h-[100px]">
+                    <!-- Ornamen background M3 Expressive -->
+                    <i data-lucide="asterisk" class="absolute -right-4 -bottom-6 w-32 h-32 text-m3-onSecondaryContainer opacity-[0.04] transform rotate-45 pointer-events-none"></i>
+                    <div class="absolute -left-8 -top-8 w-24 h-24 bg-m3-onSecondaryContainer/5 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <div class="flex items-center gap-2 mb-3 relative z-10">
+                        <div class="w-1.5 h-4 bg-m3-primary rounded-full"></div>
+                        <h2 class="text-xs font-black uppercase tracking-[0.15em] text-m3-onSecondaryContainer" id="str-stat-title">Statistik</h2>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 relative z-10">
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-2xl font-black text-m3-onSecondaryContainer tracking-tighter" id="stat-val-total">0</span>
+                            <span class="text-[9px] font-bold uppercase tracking-widest opacity-70 mt-0.5" id="str-stat-total">Koleksi</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-2xl font-black text-m3-onSecondaryContainer tracking-tighter" id="stat-val-reading">0</span>
+                            <span class="text-[9px] font-bold uppercase tracking-widest opacity-70 mt-0.5" id="str-stat-reading">Dibaca</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-2xl font-black text-m3-onSecondaryContainer tracking-tighter" id="stat-val-completed">0</span>
+                            <span class="text-[9px] font-bold uppercase tracking-widest opacity-70 mt-0.5" id="str-stat-completed">Selesai</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-2xl font-black text-m3-onSecondaryContainer tracking-tighter" id="stat-val-notes">0</span>
+                            <span class="text-[9px] font-bold uppercase tracking-widest opacity-70 mt-0.5" id="str-stat-notes">Catatan</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- VIEW: SEMUA BUKU -->
             <div id="continue-reading-section" class="hidden mb-8 -mx-5 mt-2">
@@ -96,7 +129,7 @@
             <button onclick="document.getElementById('doc-upload').click();" class="fab-capsule flex items-center justify-center bg-m3-primary text-m3-onPrimary cursor-pointer shadow-none overflow-hidden">
                 <i data-lucide="plus" class="w-8 h-8 shrink-0"></i>
             </button>
-            <input type="file" id="doc-upload" accept=".epub,.pdf" class="hidden">
+            <input type="file" id="doc-upload" accept=".epub,.pdf,.txt,.md" multiple class="hidden">
         </div>
         
         <div id="batch-delete-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-m3-surfaceVariant text-m3-onSurfaceVariant px-6 py-3 z-[60] translate-y-32 transition-transform duration-300 flex justify-between items-center rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.2)] gap-4 w-max border-none pointer-events-auto">
@@ -126,7 +159,7 @@
         </div>
 
         <div class="flex-1 relative overflow-hidden flex w-full">
-            <div id="reader-content" class="absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pt-24 pb-40 scroll-smooth reader-dynamic-text w-full">
+            <div id="reader-content" oncontextmenu="event.preventDefault()" class="absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pt-24 pb-40 scroll-smooth reader-dynamic-text w-full">
                 <div id="reader-inner" class="max-w-4xl mx-auto reader-text-container space-y-5"></div>
             </div>
 
@@ -140,10 +173,12 @@
 
             <!-- Panel Bookmark -->
             <div id="bookmark-panel" class="side-panel absolute right-0 top-0 bottom-0 w-72 bg-m3-surfaceVariant p-6 transform translate-x-full opacity-0 z-40 overflow-y-auto rounded-l-[32px]">
-                <h3 id="str-bookmark-title" class="text-lg font-bold mb-6 text-m3-onSurfaceVariant flex items-center gap-2"><i data-lucide="bookmark"></i> Bookmark</h3>
-                <div id="bookmark-list" class="space-y-2 flex flex-col pb-20">
-                    <!-- List Bookmark di-render dari app.js nanti -->
+                <h3 id="str-bookmark-title" class="text-lg font-bold mb-4 text-m3-onSurfaceVariant flex items-center gap-2"><i data-lucide="bookmark"></i> Bookmark</h3>
+                <div class="relative mb-4">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50 text-m3-onSurface pointer-events-none"></i>
+                    <input type="text" id="bookmark-search-input" oninput="filterBookmarkPanel(this.value)" class="w-full bg-m3-surface text-m3-onSurface text-sm font-bold pl-9 pr-3 py-2.5 rounded-2xl border-none outline-none placeholder:opacity-50" placeholder="Cari judul bookmark...">
                 </div>
+                <div id="bookmark-list" class="space-y-2 flex flex-col pb-20"></div>
                 <div id="bookmark-empty" class="text-sm opacity-50 p-3 text-center hidden font-bold" id="str-bookmark-empty">Belum ada pembatas buku.</div>
             </div>
             
@@ -303,6 +338,7 @@
             <div class="capsule-group bg-m3-surfaceVariant p-1 rounded-full mb-4">
                 <button id="wiki-lang-id" onclick="setWikiLang('id')" class="capsule-btn py-3 font-bold text-xs text-m3-onSurfaceVariant">Indonesia</button>
                 <button id="wiki-lang-en" onclick="setWikiLang('en')" class="capsule-btn py-3 font-bold text-xs text-m3-onSurfaceVariant">English</button>
+                <button id="wiki-lang-es" onclick="setWikiLang('es')" class="capsule-btn py-3 font-bold text-xs text-m3-onSurfaceVariant">Español</button>
             </div>
 
             <h4 id="str-set-ai-config" class="text-xs font-bold opacity-70 mb-3 px-1 mt-6 uppercase tracking-wider">Konfigurasi AI</h4>
@@ -449,6 +485,10 @@
         <button onpointerdown="event.preventDefault(); lookupDictionary()" class="px-3 py-1.5 rounded-full hover:bg-m3-surface text-xs font-bold flex items-center gap-1 transition-colors text-m3-primary btn-morph">
             <i data-lucide="search" class="w-4 h-4"></i> AI
         </button>
+
+        <button onpointerdown="event.preventDefault(); copySelection()" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors text-m3-onSurfaceVariant hover:bg-m3-surface btn-morph">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+        </button>
     </div>
 
     <!-- Bookmark Create/Edit Modal -->
@@ -473,18 +513,48 @@
         <div class="modal-content bg-m3-surface w-full max-w-md sm:rounded-[48px] rounded-t-[48px] p-6 pb-12 sm:pb-6 transform translate-y-full flex flex-col max-h-[85vh] border-none" id="ai-sheet">
             <div class="w-12 h-1.5 bg-m3-onSurfaceVariant/30 rounded-full mx-auto mb-6 sm:hidden"></div>
             <div class="flex items-center justify-between mb-4 shrink-0">
-                <h3 id="str-ai-title" class="text-lg font-bold text-m3-onSurface flex items-center gap-2"><i data-lucide="search" class="w-5 h-5 text-m3-primary"></i> Penjelasan</h3>
-                <button onclick="closeAiModal()" class="w-8 h-8 rounded-full bg-m3-surfaceVariant flex items-center justify-center btn-morph"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <h3 id="str-ai-title" class="text-lg font-bold text-m3-onSurface flex items-center gap-2">
+                    <i data-lucide="search" class="w-5 h-5 text-m3-primary"></i> Penjelasan
+                </h3>
+                <button onclick="closeAiModal()" class="w-8 h-8 rounded-full bg-m3-surfaceVariant flex items-center justify-center btn-morph">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
             </div>
-            
-            <h4 id="ai-term" class="text-xl font-black mb-4 break-words text-m3-primary"></h4>
-            
-            <div class="flex-1 overflow-y-auto min-h-[150px] relative rounded-2xl bg-m3-surfaceVariant p-4 mb-4">
-                <div id="ai-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-m3-surfaceVariant z-10 rounded-2xl">
-                    <div class="w-8 h-8 border-4 border-m3-primary border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p id="str-ai-loading" class="text-xs font-bold opacity-70 animate-pulse uppercase tracking-wider">Mencari referensi...</p>
+
+            <h4 id="ai-term" class="text-xl font-black mb-4 break-words text-m3-primary shrink-0"></h4>
+
+            <div class="flex-1 overflow-y-auto flex flex-col gap-4 min-h-0">
+
+                <!-- Wikipedia Card -->
+                <div id="wiki-card" class="rounded-2xl bg-m3-surfaceVariant p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-6 h-6 rounded-full bg-m3-surface flex items-center justify-center shrink-0">
+                            <i data-lucide="book-open" class="w-3.5 h-3.5 text-m3-onSurface"></i>
+                        </div>
+                        <span class="text-xs font-black uppercase tracking-widest text-m3-onSurfaceVariant opacity-60">Wikipedia</span>
+                    </div>
+                    <div id="wiki-loading" class="flex items-center gap-3 py-2">
+                        <div class="w-5 h-5 border-2 border-m3-primary border-t-transparent rounded-full animate-spin shrink-0"></div>
+                        <p class="text-xs font-bold opacity-50 animate-pulse uppercase tracking-wider">Mencari referensi...</p>
+                    </div>
+                    <div id="wiki-content" class="hidden"></div>
                 </div>
-                <div id="ai-content" class="text-m3-onSurfaceVariant leading-relaxed font-medium"></div>
+
+                <!-- Gemini Card -->
+                <div id="gemini-card" class="hidden rounded-2xl bg-m3-primaryContainer p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-6 h-6 rounded-full bg-m3-primary/20 flex items-center justify-center shrink-0">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-m3-primary"></i>
+                        </div>
+                        <span class="text-xs font-black uppercase tracking-widest text-m3-onPrimaryContainer opacity-70">Gemini AI</span>
+                    </div>
+                    <div id="gemini-loading" class="flex items-center gap-3 py-2">
+                        <div class="w-5 h-5 border-2 border-m3-primary border-t-transparent rounded-full animate-spin shrink-0"></div>
+                        <p class="text-xs font-bold opacity-50 animate-pulse uppercase tracking-wider">Memuat AI...</p>
+                    </div>
+                    <div id="gemini-content" class="hidden text-sm leading-relaxed font-medium text-m3-onPrimaryContainer"></div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -511,5 +581,3 @@
 
 </body>
 </html>
-
-
